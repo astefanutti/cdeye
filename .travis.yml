@@ -1,0 +1,18 @@
+language: java
+
+branches:
+  only:
+    - master
+
+install:
+  - mvn clean install -Dmaven.test.skip.exec
+
+jdk:
+  - oraclejdk7
+  - openjdk7
+  - oraclejdk8
+
+notifications:
+  email:
+    recipients:
+      - antonin.stefanutti@gmail.com
