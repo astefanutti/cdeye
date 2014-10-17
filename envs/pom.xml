@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>cdeye-envs</artifactId>
-    <name>CDI Eye Environments</name>
+    <name>CDEye Environments</name>
     <packaging>pom</packaging>
 
     <modules>

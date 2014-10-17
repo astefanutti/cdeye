@@ -18,14 +18,17 @@
 
     <servlet-mapping>
         <servlet-name>Jersey REST Service</servlet-name>
-        <url-pattern>/*</url-pattern>
+        <url-pattern>cdeye/*</url-pattern>
     </servlet-mapping>
 
     <listener>
         <listener-class>org.jboss.weld.environment.servlet.Listener</listener-class>
     </listener>
 
-    <!--
+    <listener>
+        <listener-class>org.jboss.weld.environment.servlet.BeanManagerResourceBindingListener</listener-class>
+    </listener>
+
     <error-page>
         <error-code>404</error-code>
         <location>/index.html</location>
@@ -34,6 +37,5 @@
     <welcome-file-list>
         <welcome-file>index.html</welcome-file>
     </welcome-file-list>
-    -->
 
 </web-app>

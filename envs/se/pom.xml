@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>cdeye-se</artifactId>
-    <name>CDI Eye Java SE Environment</name>
+    <name>CDEye Java SE Environment</name>
 
     <dependencies>
 

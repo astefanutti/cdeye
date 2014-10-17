@@ -9,7 +9,55 @@
     </parent>
 
     <artifactId>cdeye-core</artifactId>
-    <name>CDI Eye Core</name>
+    <name>CDEye Core</name>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>jaxb2-maven-plugin</artifactId>
+                <version>1.5</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.jvnet.jaxb2_commons</groupId>
+                        <artifactId>jaxb2-basics</artifactId>
+                        <version>0.6.4</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.jvnet.jaxb2_commons</groupId>
+                        <artifactId>jaxb2-namespace-prefix</artifactId>
+                        <version>1.1</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.jvnet.jaxb2_commons</groupId>
+                        <artifactId>jaxb2-fluent-api</artifactId>
+                        <version>3.0</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>redmosquito</groupId>
+                        <artifactId>jaxb-fluent-api-ext</artifactId>
+                        <version>0.0.3</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>xjc</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <schemaDirectory>${basedir}/src/main/xsd</schemaDirectory>
+                    <schemaFiles>cdeye.xsd</schemaFiles>
+                    <extension>true</extension>
+                    <quiet>true</quiet>
+                    <bindingDirectory>${basedir}/src/main/xsd</bindingDirectory>
+                    <bindingFiles>jaxb-binding.xml</bindingFiles>
+                    <arguments>-Xnamespace-prefix -Xfluent-api -Xfluent-api-ext -Xinheritance</arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <dependencies>
 

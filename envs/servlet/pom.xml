@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>cdeye-servlet</artifactId>
-    <name>CDI Eye Java Servlet Environment</name>
+    <name>CDEye Java Servlet Environment</name>
 
     <dependencies>
 

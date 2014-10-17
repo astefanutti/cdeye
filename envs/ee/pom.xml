@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>cdeye-ee</artifactId>
-    <name>CDI Eye Java EE Environment</name>
+    <name>CDEye Java EE Environment</name>
 
     <build>
         <testResources>

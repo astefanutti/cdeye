@@ -16,23 +16,30 @@
 package io.astefanutti.cdeye.web;
 
 import io.astefanutti.cdeye.core.CdEyeExtension;
+import io.astefanutti.cdeye.core.model.CdEyeBeans;
 
 import javax.annotation.ManagedBean;
+import javax.enterprise.inject.spi.Bean;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 
 @ManagedBean
-@Path("/beans")
+@Path("beans")
 public class BeansResource {
 
     @Inject
     private CdEyeExtension cdEye;
 
     @GET
-    @Produces("text/plain")
-    public String getBeans() {
-        return cdEye.getBeans().toString();
+    @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+    public CdEyeBeans getBeans() {
+        CdEyeBeans beans = new CdEyeBeans();
+        for (Bean<?> bean : cdEye.getBeans()) {
+            beans.withBean().withNewBean().withBeanClass(bean.getBeanClass().getName());
+        }
+        return beans;
     }
 }

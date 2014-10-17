@@ -13,7 +13,7 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>CDI Eye</name>
+    <name>CDEye</name>
     <inceptionYear>2014</inceptionYear>
     <description>The Eye for CDI</description>
     <url>https://github.com/astefanutti/cdeye</url>
@@ -59,7 +59,7 @@
         <weld.version>2.2.5.Final</weld.version>
         <owb.version>1.5.0-SNAPSHOT</owb.version>
         <wildfly.version>8.1.0.Final</wildfly.version>
-        <jetty.version>9.2.3.v20140905</jetty.version>
+        <jetty.version>9.2.2.v20140723</jetty.version>
         <arquillian.version>1.1.5.Final</arquillian.version>
         <arquillian.weld.version>1.0.0.CR8</arquillian.weld.version>
         <shrinkwrap.resolver.version>2.1.1</shrinkwrap.resolver.version>

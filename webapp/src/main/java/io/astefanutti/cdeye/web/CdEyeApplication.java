@@ -20,7 +20,7 @@ import javax.ws.rs.core.Application;
 import java.util.HashSet;
 import java.util.Set;
 
-@ApplicationPath("/*")
+@ApplicationPath("cdeye/*")
 public class CdEyeApplication extends Application {
 
     @Override
