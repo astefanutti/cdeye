@@ -64,17 +64,7 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-maven-plugin</artifactId>
                 <configuration>
-                    <systemProperties>
-                        <force>true</force>
-                        <systemProperty>
-                            <name>org.eclipse.jetty.util.log.Log</name>
-                            <value>org.eclipse.jetty.util.log.Slf4jLog</value>
-                        </systemProperty>
-                        <systemProperty>
-                            <name>logback.configurationFile</name>
-                            <value>${project.baseUri}/logback.xml</value>
-                        </systemProperty>
-                    </systemProperties>
+                    <jvmArgs>-Dlogback.configurationFile=src/test/resources/logback-test.xml</jvmArgs>
                 </configuration>
                 <dependencies>
                     <dependency>

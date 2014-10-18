@@ -1,7 +1,5 @@
 <configuration>
 
-    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
-
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -9,7 +7,7 @@
     </appender>
 
     <logger name="org.jboss.weld">
-        <level value="INFO" />
+        <level value="DEBUG" />
     </logger>
 
     <root level="INFO">
