@@ -15,7 +15,7 @@ function display() {
 
     var div = document.getElementById("beans");
     div.innerHTML = "";
-    for (var i = 0; i < beans.Bean.length; i++) {
-        div.innerHTML += beans.Bean[i].BeanClass + "<br/>";
+    for (var i = 0; i < beans.bean.length; i++) {
+        div.innerHTML += beans.bean[i].className + "<br/>";
     }
 }

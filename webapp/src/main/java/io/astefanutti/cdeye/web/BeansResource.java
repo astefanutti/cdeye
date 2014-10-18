@@ -38,7 +38,7 @@ public class BeansResource {
     public CdEyeBeans getBeans() {
         CdEyeBeans beans = new CdEyeBeans();
         for (Bean<?> bean : cdEye.getBeans()) {
-            beans.withBean().withNewBean().withBeanClass(bean.getBeanClass().getName());
+            beans.withBean().withNewBean().withClassName(bean.getBeanClass().getName());
         }
         return beans;
     }
