@@ -14,46 +14,48 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>jaxb2-maven-plugin</artifactId>
-                <version>1.6</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.jvnet.jaxb2_commons</groupId>
-                        <artifactId>jaxb2-basics</artifactId>
-                        <version>0.9.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.jvnet.jaxb2_commons</groupId>
-                        <artifactId>jaxb2-namespace-prefix</artifactId>
-                        <version>1.1</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.jvnet.jaxb2_commons</groupId>
-                        <artifactId>jaxb2-fluent-api</artifactId>
-                        <version>3.0</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>redmosquito</groupId>
-                        <artifactId>jaxb-fluent-api-ext</artifactId>
-                        <version>0.0.3</version>
-                    </dependency>
-                </dependencies>
+                <groupId>org.jvnet.jaxb2.maven2</groupId>
+                <artifactId>maven-jaxb2-plugin</artifactId>
+                <version>0.9.0</version>
                 <executions>
                     <execution>
                         <goals>
-                            <goal>xjc</goal>
+                            <goal>generate</goal>
                         </goals>
                     </execution>
                 </executions>
                 <configuration>
-                    <schemaDirectory>${basedir}/src/main/xsd</schemaDirectory>
-                    <schemaFiles>cdeye.xsd</schemaFiles>
                     <extension>true</extension>
-                    <quiet>true</quiet>
+                    <schemaDirectory>${basedir}/src/main/xsd</schemaDirectory>
                     <bindingDirectory>${basedir}/src/main/xsd</bindingDirectory>
-                    <bindingFiles>jaxb-binding.xml</bindingFiles>
-                    <arguments>-Xnamespace-prefix -Xfluent-api -Xfluent-api-ext -Xinheritance</arguments>
+                    <args>
+                        <arg>-Xnamespace-prefix</arg>
+                        <arg>-Xfluent-api</arg>
+                        <arg>-Xfluent-api-ext</arg>
+                        <arg>-Xinheritance</arg>
+                    </args>
+                    <plugins>
+                        <plugin>
+                            <groupId>org.jvnet.jaxb2_commons</groupId>
+                            <artifactId>jaxb2-basics</artifactId>
+                            <version>0.9.0</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>org.jvnet.jaxb2_commons</groupId>
+                            <artifactId>jaxb2-namespace-prefix</artifactId>
+                            <version>1.1</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>org.jvnet.jaxb2_commons</groupId>
+                            <artifactId>jaxb2-fluent-api</artifactId>
+                            <version>3.0</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>redmosquito</groupId>
+                            <artifactId>jaxb-fluent-api-ext</artifactId>
+                            <version>0.0.3</version>
+                        </plugin>
+                    </plugins>
                 </configuration>
             </plugin>
         </plugins>
