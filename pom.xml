@@ -50,14 +50,11 @@
             <id>apache-snapshots</id>
             <url>http://repository.apache.org/snapshots/</url>
         </repository>
-    </repositories>
-
-    <pluginRepositories>
-        <pluginRepository>
+        <repository>
             <id>googlecode-jaxb-fluent-api-ext</id>
             <url>http://jaxb-fluent-api-ext.googlecode.com/svn/maven/release/</url>
-        </pluginRepository>
-    </pluginRepositories>
+        </repository>
+    </repositories>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
