@@ -12,6 +12,7 @@
     <xs:complexType name="Bean">
         <xs:sequence>
             <xs:element name="className" type="xs:string" />
+            <xs:element name="classSimpleName" type="xs:string" />
         </xs:sequence>
     </xs:complexType>
 
