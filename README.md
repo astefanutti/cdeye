@@ -1,5 +1,6 @@
 # CDI Visualization
 
+![Dependency injection graph](https://raw.github.com/astefanutti/cdeye/gh-pages/screenshot.png)
 
 ## License
 
