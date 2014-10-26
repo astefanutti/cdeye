@@ -13,6 +13,22 @@
         <xs:sequence>
             <xs:element name="className" type="xs:string" />
             <xs:element name="classSimpleName" type="xs:string" />
+            <xs:element ref="injectionPoints" />
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:ID"/>
+    </xs:complexType>
+
+    <xs:element name="injectionPoints">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="injectionPoint" type="InjectionPoint" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="InjectionPoint">
+        <xs:sequence>
+            <xs:element name="bean" type="xs:IDREF" />
         </xs:sequence>
     </xs:complexType>
 

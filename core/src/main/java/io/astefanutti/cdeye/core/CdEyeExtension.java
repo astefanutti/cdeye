@@ -17,9 +17,13 @@ package io.astefanutti.cdeye.core;
 
 
 import javax.enterprise.event.Observes;
+import javax.enterprise.inject.spi.AfterDeploymentValidation;
 import javax.enterprise.inject.spi.Bean;
+import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.Extension;
+import javax.enterprise.inject.spi.InjectionPoint;
 import javax.enterprise.inject.spi.ProcessBean;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,17 +33,33 @@ import java.util.Set;
 
 public class CdEyeExtension implements Extension {
 
-    private final Set<String> exclusions = new HashSet<>(Arrays.asList("org.jboss.weld", "javax.enterprise.inject"));
+    // TODO: enable extensibility of package exclusion
+    private final Set<String> exclusions = new HashSet<>(Arrays.asList("org.jboss.weld", "javax.enterprise.inject", "org.glassfish.jersey.gf.cdi"));
 
     private final List<Bean<?>> beans = new ArrayList<>();
+
+    private BeanManager manager;
 
     public List<Bean<?>> getBeans() {
         return Collections.unmodifiableList(beans);
     }
 
+    public Bean<?> resolveBean(InjectionPoint ip) {
+        Set<Bean<?>> beans = manager.getBeans(ip.getType(), ip.getQualifiers().toArray(new Annotation[ip.getQualifiers().size()]));
+        return manager.resolve(beans);
+    }
+
+    public String getBeanId(Bean<?> bean) {
+        return String.valueOf(beans.indexOf(bean));
+    }
+
     private <X> void processBean(@Observes ProcessBean<X> pb) {
         if (!isExcludedPackage(pb.getBean().getBeanClass().getPackage()))
             beans.add(pb.getBean());
+    }
+
+    private void afterDeploymentValidation(@Observes AfterDeploymentValidation adv, BeanManager manager) {
+        this.manager = manager;
     }
 
     private boolean isExcludedPackage(Package pkg) {

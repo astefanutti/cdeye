@@ -16,10 +16,13 @@
 package io.astefanutti.cdeye.web;
 
 import io.astefanutti.cdeye.core.CdEyeExtension;
+import io.astefanutti.cdeye.core.model.CdEyeBean;
 import io.astefanutti.cdeye.core.model.CdEyeBeans;
 
 import javax.annotation.ManagedBean;
 import javax.enterprise.inject.spi.Bean;
+import javax.enterprise.inject.spi.BeanManager;
+import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -33,15 +36,32 @@ public class BeansResource {
     @Inject
     private CdEyeExtension cdEye;
 
+    // TODO: find a way to hide CDEye Web internal beans
+
     @GET
     @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
     public CdEyeBeans getBeans() {
         CdEyeBeans beans = new CdEyeBeans();
         for (Bean<?> bean : cdEye.getBeans()) {
-            beans.withNewBean()
-            .withClassName(bean.getBeanClass().getName())
-            .withClassSimpleName(bean.getBeanClass().getSimpleName());
+            CdEyeBean cdEyeBean = cdEyeBean(bean);
+            for (InjectionPoint ip : bean.getInjectionPoints()) {
+                // Skip InjectionPoint and BeanManager injection points
+                if (ip.getType().equals(InjectionPoint.class) || ip.getType().equals(BeanManager.class))
+                    continue;
+
+                cdEyeBean.withInjectionPoints()
+                    .withNewInjectionPoint()
+                        .withBean(cdEyeBean(cdEye.resolveBean(ip)));
+            }
+            beans.withBean(cdEyeBean);
         }
         return beans;
+    }
+
+    private CdEyeBean cdEyeBean(Bean<?> bean) {
+        return new CdEyeBean()
+            .withId(cdEye.getBeanId(bean))
+            .withClassName(bean.getBeanClass().getName())
+            .withClassSimpleName(bean.getBeanClass().getSimpleName());
     }
 }
