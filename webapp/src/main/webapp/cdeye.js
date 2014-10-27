@@ -26,27 +26,17 @@ function display() {
         }
     }
 
-    var color = d3.scale.category20();
-
     var d3cola = cola.d3adaptor()
         .linkDistance(100)
         .avoidOverlaps(true)
         .handleDisconnected(true)
-        .size([1000, 1000]);
+        //.symmetricDiffLinkLengths(5)
+        .size([window.innerWidth, window.innerHeight]);
 
     var svg = d3.select("body").append("svg")
         .attr("width", "100%")
         .attr("height", "100%")
-        .attr("preserveAspectRatio", "xMidYMid")
-        .attr("viewBox", "0 0 " + (1000) + " " + (1000))
-        .attr("pointer-events", "all");
-        //.call(d3.behavior.zoom().on("zoom", redraw));
-
-    svg.append('rect')
-        .attr('class', 'background')
-        .attr('width', "100%")
-        .attr('height', "100%")
-        .call(d3.behavior.zoom().on("zoom", redraw));
+        .attr("preserveAspectRatio", "xMidYMid");
 
     // define arrow markers for graph links
     svg.append('svg:defs')
@@ -64,16 +54,19 @@ function display() {
 
     var container = svg.append('g');
 
-    function redraw() {
+    svg.call(d3.behavior.zoom().on("zoom", function() {
         container.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
-    }
+    }));
 
-    var powerGraph;
+    var color = d3.scale.category20();
+
+    var powerGraph = null;
     d3cola.nodes(nodes)
         .links(links)
         //.groups(graph.groups)
         .powerGraphGroups(function (d) {
-            return (powerGraph = d).groups.forEach(function (v) {
+            powerGraph = d;
+            d.groups.forEach(function (v) {
                 return v.padding = 10;
             });
         });
@@ -156,5 +149,16 @@ function display() {
                  var h = this.getBBox().height;
                  return d.y + h / 3.5;
              });
-    });
+    }).on("end", viewBox);
+
+    function viewBox() {
+        var b = cola.vpsc.Rectangle.empty();
+        container.selectAll("rect").each(function (d) {
+            var bb = this.getBBox();
+            b = b.union(new cola.vpsc.Rectangle(bb.x, bb.x + bb.width, bb.y, bb.y + bb.height));
+        });
+        svg.attr("viewBox", b.x + " " + b.y + " " + (b.width()) + " " + (b.height()));
+
+        d3cola.on("end", function () {});
+    }
 }
