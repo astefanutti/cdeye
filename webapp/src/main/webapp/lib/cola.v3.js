@@ -799,518 +799,6 @@ var cola;
 })(cola || (cola = {}));
 var cola;
 (function (cola) {
-    function unionCount(a, b) {
-        var u = {};
-        for (var i in a)
-            u[i] = {};
-        for (var i in b)
-            u[i] = {};
-        return Object.keys(u).length;
-    }
-
-    function intersectionCount(a, b) {
-        var n = 0;
-        for (var i in a)
-            if (typeof b[i] !== 'undefined')
-                ++n;
-        return n;
-    }
-
-    function getNeighbours(n, links, la) {
-        var neighbours = new Array(n);
-        for (var i = 0; i < n; ++i) {
-            neighbours[i] = {};
-        }
-        links.forEach(function (e) {
-            var u = la.getSourceIndex(e), v = la.getTargetIndex(e);
-            neighbours[u][v] = {};
-            neighbours[v][u] = {};
-        });
-        return neighbours;
-    }
-
-    function computeLinkLengths(n, links, w, f, la) {
-        var neighbours = getNeighbours(n, links, la);
-        links.forEach(function (l) {
-            var a = neighbours[la.getSourceIndex(l)];
-            var b = neighbours[la.getTargetIndex(l)];
-            la.setLength(l, 1 + w * f(a, b));
-        });
-    }
-
-    function symmetricDiffLinkLengths(n, links, la, w) {
-        if (typeof w === "undefined") { w = 1; }
-        computeLinkLengths(n, links, w, function (a, b) {
-            return Math.sqrt(unionCount(a, b) - intersectionCount(a, b));
-        }, la);
-    }
-    cola.symmetricDiffLinkLengths = symmetricDiffLinkLengths;
-
-    function jaccardLinkLengths(n, links, la, w) {
-        if (typeof w === "undefined") { w = 1; }
-        computeLinkLengths(n, links, w, function (a, b) {
-            return Math.min(Object.keys(a).length, Object.keys(b).length) < 1.1 ? 0 : intersectionCount(a, b) / unionCount(a, b);
-        }, la);
-    }
-    cola.jaccardLinkLengths = jaccardLinkLengths;
-
-    function generateDirectedEdgeConstraints(n, links, axis, la) {
-        var components = stronglyConnectedComponents(n, links, la);
-        var nodes = {};
-        components.filter(function (c) {
-            return c.length > 1;
-        }).forEach(function (c) {
-            return c.forEach(function (v) {
-                return nodes[v] = c;
-            });
-        });
-        var constraints = [];
-        links.forEach(function (l) {
-            var ui = la.getSourceIndex(l), vi = la.getTargetIndex(l), u = nodes[ui], v = nodes[vi];
-            if (!u || !v || u.component !== v.component) {
-                constraints.push({
-                    axis: axis,
-                    left: ui,
-                    right: vi,
-                    gap: la.getMinSeparation(l)
-                });
-            }
-        });
-        return constraints;
-    }
-    cola.generateDirectedEdgeConstraints = generateDirectedEdgeConstraints;
-
-    function stronglyConnectedComponents(numVertices, edges, la) {
-        var adjList = new Array(numVertices);
-        var index = new Array(numVertices);
-        var lowValue = new Array(numVertices);
-        var active = new Array(numVertices);
-
-        for (var i = 0; i < numVertices; ++i) {
-            adjList[i] = [];
-            index[i] = -1;
-            lowValue[i] = 0;
-            active[i] = false;
-        }
-
-        for (var i = 0; i < edges.length; ++i) {
-            adjList[la.getSourceIndex(edges[i])].push(la.getTargetIndex(edges[i]));
-        }
-
-        var count = 0;
-        var S = [];
-        var components = [];
-
-        function strongConnect(v) {
-            index[v] = count;
-            lowValue[v] = count;
-            active[v] = true;
-            count += 1;
-            S.push(v);
-            var e = adjList[v];
-            for (var i = 0; i < e.length; ++i) {
-                var u = e[i];
-                if (index[u] < 0) {
-                    strongConnect(u);
-                    lowValue[v] = Math.min(lowValue[v], lowValue[u]) | 0;
-                } else if (active[u]) {
-                    lowValue[v] = Math.min(lowValue[v], lowValue[u]);
-                }
-            }
-            if (lowValue[v] === index[v]) {
-                var component = [];
-                for (var i = S.length - 1; i >= 0; --i) {
-                    var w = S[i];
-                    active[w] = false;
-                    component.push(w);
-                    if (w === v) {
-                        S.length = i;
-                        break;
-                    }
-                }
-                components.push(component);
-            }
-        }
-
-        for (var i = 0; i < numVertices; ++i) {
-            if (index[i] < 0) {
-                strongConnect(i);
-            }
-        }
-
-        return components;
-    }
-})(cola || (cola = {}));
-var cola;
-(function (cola) {
-    (function (powergraph) {
-        var PowerEdge = (function () {
-            function PowerEdge(source, target) {
-                this.source = source;
-                this.target = target;
-            }
-            return PowerEdge;
-        })();
-        powergraph.PowerEdge = PowerEdge;
-
-        var Configuration = (function () {
-            function Configuration(n, edges, linkAccessor) {
-                var _this = this;
-                this.linkAccessor = linkAccessor;
-                this.modules = new Array(n);
-                this.roots = new Array(n);
-                for (var i = 0; i < n; ++i) {
-                    this.roots[i] = this.modules[i] = new Module(i, {}, {}, {});
-                }
-                this.R = edges.length;
-                edges.forEach(function (e) {
-                    var s = _this.modules[linkAccessor.getSourceIndex(e)], t = _this.modules[linkAccessor.getTargetIndex(e)];
-                    s.outgoing[t.id] = t;
-                    t.incoming[s.id] = s;
-                });
-            }
-            Configuration.prototype.merge = function (a, b) {
-                var inInt = intersection(a.incoming, b.incoming), outInt = intersection(a.outgoing, b.outgoing);
-                var children = {};
-                children[a.id] = a;
-                children[b.id] = b;
-                var m = new Module(this.modules.length, outInt, inInt, children);
-                this.modules.push(m);
-                var update = function (s, i, o) {
-                    for (var v in s) {
-                        var n = s[v];
-                        n[i][m.id] = m;
-                        delete n[i][a.id];
-                        delete n[i][b.id];
-                        delete a[o][v];
-                        delete b[o][v];
-                    }
-                };
-                update(outInt, "incoming", "outgoing");
-                update(inInt, "outgoing", "incoming");
-                this.R -= Object.keys(inInt).length + Object.keys(outInt).length;
-                delete this.roots[a.id];
-                delete this.roots[b.id];
-                this.roots[m.id] = m;
-                return m;
-            };
-
-            Configuration.prototype.rootMerges = function () {
-                var rs = Object.keys(this.roots);
-                var n = rs.length;
-                var merges = new Array(n * (n - 1));
-                var ctr = 0;
-                for (var i = 0, i_ = n - 1; i < i_; ++i) {
-                    for (var j = i + 1; j < n; ++j) {
-                        var a = this.roots[rs[i]], b = this.roots[rs[j]];
-                        merges[ctr++] = { nEdges: this.nEdges(a, b), a: a, b: b };
-                    }
-                }
-                return merges;
-            };
-
-            Configuration.prototype.greedyMerge = function () {
-                var ms = this.rootMerges().sort(function (a, b) {
-                    return a.nEdges - b.nEdges;
-                });
-                var m = ms[0];
-                if (m.nEdges >= this.R)
-                    return false;
-                this.merge(m.a, m.b);
-                return true;
-            };
-
-            Configuration.prototype.nEdges = function (a, b) {
-                return this.R - intersectionCount(a.outgoing, b.outgoing) - intersectionCount(a.incoming, b.incoming);
-            };
-
-            Configuration.prototype.getGroupHierarchy = function (retargetedEdges) {
-                var _this = this;
-                var groups = [];
-                var root = {};
-                toGroups(this.roots, root, groups);
-                var es = this.allEdges();
-                es.forEach(function (e) {
-                    var a = _this.modules[e.source];
-                    var b = _this.modules[e.target];
-                    retargetedEdges.push(new PowerEdge(typeof a.gid === "undefined" ? e.source : groups[a.gid], typeof b.gid === "undefined" ? e.target : groups[b.gid]));
-                });
-                return groups;
-            };
-
-            Configuration.prototype.allEdges = function () {
-                var es = [];
-                Configuration.getEdges(this.roots, es);
-                return es;
-            };
-
-            Configuration.getEdges = function (modules, es) {
-                for (var i in modules) {
-                    var m = modules[i];
-                    m.getEdges(es);
-                    Configuration.getEdges(m.children, es);
-                }
-            };
-            return Configuration;
-        })();
-        powergraph.Configuration = Configuration;
-
-        function toGroups(modules, group, groups) {
-            for (var i in modules) {
-                var m = modules[i];
-                if (m.isLeaf()) {
-                    if (!group.leaves)
-                        group.leaves = [];
-                    group.leaves.push(m.id);
-                } else {
-                    var g = group;
-                    m.gid = groups.length;
-                    if (!m.isIsland()) {
-                        g = { id: m.gid };
-                        if (!group.groups)
-                            group.groups = [];
-                        group.groups.push(m.gid);
-                        groups.push(g);
-                    }
-                    toGroups(m.children, g, groups);
-                }
-            }
-        }
-
-        var Module = (function () {
-            function Module(id, outgoing, incoming, children) {
-                this.id = id;
-                this.outgoing = outgoing;
-                this.incoming = incoming;
-                this.children = children;
-            }
-            Module.prototype.getEdges = function (es) {
-                for (var o in this.outgoing) {
-                    es.push({ source: this.id, target: this.outgoing[o].id });
-                }
-            };
-            Module.prototype.isLeaf = function () {
-                return Object.keys(this.children).length == 0;
-            };
-
-            Module.prototype.isIsland = function () {
-                return Object.keys(this.outgoing).length == 0 && Object.keys(this.incoming).length == 0;
-            };
-            return Module;
-        })();
-        powergraph.Module = Module;
-
-        function intersection(m, n) {
-            var i = {};
-            for (var v in m)
-                if (v in n)
-                    i[v] = m[v];
-            return i;
-        }
-
-        function intersectionCount(m, n) {
-            return Object.keys(intersection(m, n)).length;
-        }
-
-        function getGroups(nodes, links, la) {
-            var n = nodes.length, c = new powergraph.Configuration(n, links, la);
-            while (c.greedyMerge())
-                ;
-            var powerEdges = [];
-            var g = c.getGroupHierarchy(powerEdges);
-            powerEdges.forEach(function (e) {
-                var f = function (end) {
-                    var g = e[end];
-                    if (typeof g == "number")
-                        e[end] = nodes[g];
-                };
-                f("source");
-                f("target");
-            });
-            return { groups: g, powerEdges: powerEdges };
-        }
-        powergraph.getGroups = getGroups;
-    })(cola.powergraph || (cola.powergraph = {}));
-    var powergraph = cola.powergraph;
-})(cola || (cola = {}));
-var PairingHeap = (function () {
-    function PairingHeap(elem) {
-        this.elem = elem;
-        this.subheaps = [];
-    }
-    PairingHeap.prototype.toString = function (selector) {
-        var str = "", needComma = false;
-        for (var i = 0; i < this.subheaps.length; ++i) {
-            var subheap = this.subheaps[i];
-            if (!subheap.elem) {
-                needComma = false;
-                continue;
-            }
-            if (needComma) {
-                str = str + ",";
-            }
-            str = str + subheap.toString(selector);
-            needComma = true;
-        }
-        if (str !== "") {
-            str = "(" + str + ")";
-        }
-        return (this.elem ? selector(this.elem) : "") + str;
-    };
-
-    PairingHeap.prototype.forEach = function (f) {
-        if (!this.empty()) {
-            f(this.elem, this);
-            this.subheaps.forEach(function (s) {
-                return s.forEach(f);
-            });
-        }
-    };
-
-    PairingHeap.prototype.count = function () {
-        return this.empty() ? 0 : 1 + this.subheaps.reduce(function (n, h) {
-            return n + h.count();
-        }, 0);
-    };
-
-    PairingHeap.prototype.min = function () {
-        return this.elem;
-    };
-
-    PairingHeap.prototype.empty = function () {
-        return this.elem == null;
-    };
-
-    PairingHeap.prototype.contains = function (h) {
-        if (this === h)
-            return true;
-        for (var i = 0; i < this.subheaps.length; i++) {
-            if (this.subheaps[i].contains(h))
-                return true;
-        }
-        return false;
-    };
-
-    PairingHeap.prototype.isHeap = function (lessThan) {
-        var _this = this;
-        return this.subheaps.every(function (h) {
-            return lessThan(_this.elem, h.elem) && h.isHeap(lessThan);
-        });
-    };
-
-    PairingHeap.prototype.insert = function (obj, lessThan) {
-        return this.merge(new PairingHeap(obj), lessThan);
-    };
-
-    PairingHeap.prototype.merge = function (heap2, lessThan) {
-        if (this.empty())
-            return heap2;
-        else if (heap2.empty())
-            return this;
-        else if (lessThan(this.elem, heap2.elem)) {
-            this.subheaps.push(heap2);
-            return this;
-        } else {
-            heap2.subheaps.push(this);
-            return heap2;
-        }
-    };
-
-    PairingHeap.prototype.removeMin = function (lessThan) {
-        if (this.empty())
-            return null;
-        else
-            return this.mergePairs(lessThan);
-    };
-
-    PairingHeap.prototype.mergePairs = function (lessThan) {
-        if (this.subheaps.length == 0)
-            return new PairingHeap(null);
-        else if (this.subheaps.length == 1) {
-            return this.subheaps[0];
-        } else {
-            var firstPair = this.subheaps.pop().merge(this.subheaps.pop(), lessThan);
-            var remaining = this.mergePairs(lessThan);
-            return firstPair.merge(remaining, lessThan);
-        }
-    };
-    PairingHeap.prototype.decreaseKey = function (subheap, newValue, setHeapNode, lessThan) {
-        var newHeap = subheap.removeMin(lessThan);
-
-        subheap.elem = newHeap.elem;
-        subheap.subheaps = newHeap.subheaps;
-        if (setHeapNode !== null && newHeap.elem !== null) {
-            setHeapNode(subheap.elem, subheap);
-        }
-        var pairingNode = new PairingHeap(newValue);
-        if (setHeapNode !== null) {
-            setHeapNode(newValue, pairingNode);
-        }
-        return this.merge(pairingNode, lessThan);
-    };
-    return PairingHeap;
-})();
-
-var PriorityQueue = (function () {
-    function PriorityQueue(lessThan) {
-        this.lessThan = lessThan;
-    }
-    PriorityQueue.prototype.top = function () {
-        if (this.empty()) {
-            return null;
-        }
-        return this.root.elem;
-    };
-
-    PriorityQueue.prototype.push = function () {
-        var args = [];
-        for (var _i = 0; _i < (arguments.length - 0); _i++) {
-            args[_i] = arguments[_i + 0];
-        }
-        var pairingNode;
-        for (var i = 0, arg; arg = args[i]; ++i) {
-            pairingNode = new PairingHeap(arg);
-            this.root = this.empty() ? pairingNode : this.root.merge(pairingNode, this.lessThan);
-        }
-        return pairingNode;
-    };
-
-    PriorityQueue.prototype.empty = function () {
-        return !this.root || !this.root.elem;
-    };
-
-    PriorityQueue.prototype.isHeap = function () {
-        return this.root.isHeap(this.lessThan);
-    };
-
-    PriorityQueue.prototype.forEach = function (f) {
-        this.root.forEach(f);
-    };
-
-    PriorityQueue.prototype.pop = function () {
-        if (this.empty()) {
-            return null;
-        }
-        var obj = this.root.min();
-        this.root = this.root.removeMin(this.lessThan);
-        return obj;
-    };
-
-    PriorityQueue.prototype.reduceKey = function (heapNode, newKey, setHeapNode) {
-        if (typeof setHeapNode === "undefined") { setHeapNode = null; }
-        this.root = this.root.decreaseKey(heapNode, newKey, setHeapNode, this.lessThan);
-    };
-    PriorityQueue.prototype.toString = function (selector) {
-        return this.root.toString(selector);
-    };
-
-    PriorityQueue.prototype.count = function () {
-        return this.root.count();
-    };
-    return PriorityQueue;
-})();
-var cola;
-(function (cola) {
     (function (vpsc) {
         var PositionStats = (function () {
             function PositionStats(scale) {
@@ -1436,9 +924,9 @@ var cola;
             };
 
             Block.prototype.traverse = function (visit, acc, v, prev) {
+                var _this = this;
                 if (typeof v === "undefined") { v = this.vars[0]; }
                 if (typeof prev === "undefined") { prev = null; }
-                var _this = this;
                 v.visitNeighbours(prev, function (c, next) {
                     acc.push(visit(c));
                     _this.traverse(visit, acc, next, v);
@@ -2299,6 +1787,182 @@ var cola;
     })(cola.vpsc || (cola.vpsc = {}));
     var vpsc = cola.vpsc;
 })(cola || (cola = {}));
+var PairingHeap = (function () {
+    function PairingHeap(elem) {
+        this.elem = elem;
+        this.subheaps = [];
+    }
+    PairingHeap.prototype.toString = function (selector) {
+        var str = "", needComma = false;
+        for (var i = 0; i < this.subheaps.length; ++i) {
+            var subheap = this.subheaps[i];
+            if (!subheap.elem) {
+                needComma = false;
+                continue;
+            }
+            if (needComma) {
+                str = str + ",";
+            }
+            str = str + subheap.toString(selector);
+            needComma = true;
+        }
+        if (str !== "") {
+            str = "(" + str + ")";
+        }
+        return (this.elem ? selector(this.elem) : "") + str;
+    };
+
+    PairingHeap.prototype.forEach = function (f) {
+        if (!this.empty()) {
+            f(this.elem, this);
+            this.subheaps.forEach(function (s) {
+                return s.forEach(f);
+            });
+        }
+    };
+
+    PairingHeap.prototype.count = function () {
+        return this.empty() ? 0 : 1 + this.subheaps.reduce(function (n, h) {
+            return n + h.count();
+        }, 0);
+    };
+
+    PairingHeap.prototype.min = function () {
+        return this.elem;
+    };
+
+    PairingHeap.prototype.empty = function () {
+        return this.elem == null;
+    };
+
+    PairingHeap.prototype.contains = function (h) {
+        if (this === h)
+            return true;
+        for (var i = 0; i < this.subheaps.length; i++) {
+            if (this.subheaps[i].contains(h))
+                return true;
+        }
+        return false;
+    };
+
+    PairingHeap.prototype.isHeap = function (lessThan) {
+        var _this = this;
+        return this.subheaps.every(function (h) {
+            return lessThan(_this.elem, h.elem) && h.isHeap(lessThan);
+        });
+    };
+
+    PairingHeap.prototype.insert = function (obj, lessThan) {
+        return this.merge(new PairingHeap(obj), lessThan);
+    };
+
+    PairingHeap.prototype.merge = function (heap2, lessThan) {
+        if (this.empty())
+            return heap2;
+        else if (heap2.empty())
+            return this;
+        else if (lessThan(this.elem, heap2.elem)) {
+            this.subheaps.push(heap2);
+            return this;
+        } else {
+            heap2.subheaps.push(this);
+            return heap2;
+        }
+    };
+
+    PairingHeap.prototype.removeMin = function (lessThan) {
+        if (this.empty())
+            return null;
+        else
+            return this.mergePairs(lessThan);
+    };
+
+    PairingHeap.prototype.mergePairs = function (lessThan) {
+        if (this.subheaps.length == 0)
+            return new PairingHeap(null);
+        else if (this.subheaps.length == 1) {
+            return this.subheaps[0];
+        } else {
+            var firstPair = this.subheaps.pop().merge(this.subheaps.pop(), lessThan);
+            var remaining = this.mergePairs(lessThan);
+            return firstPair.merge(remaining, lessThan);
+        }
+    };
+    PairingHeap.prototype.decreaseKey = function (subheap, newValue, setHeapNode, lessThan) {
+        var newHeap = subheap.removeMin(lessThan);
+
+        subheap.elem = newHeap.elem;
+        subheap.subheaps = newHeap.subheaps;
+        if (setHeapNode !== null && newHeap.elem !== null) {
+            setHeapNode(subheap.elem, subheap);
+        }
+        var pairingNode = new PairingHeap(newValue);
+        if (setHeapNode !== null) {
+            setHeapNode(newValue, pairingNode);
+        }
+        return this.merge(pairingNode, lessThan);
+    };
+    return PairingHeap;
+})();
+
+var PriorityQueue = (function () {
+    function PriorityQueue(lessThan) {
+        this.lessThan = lessThan;
+    }
+    PriorityQueue.prototype.top = function () {
+        if (this.empty()) {
+            return null;
+        }
+        return this.root.elem;
+    };
+
+    PriorityQueue.prototype.push = function () {
+        var args = [];
+        for (var _i = 0; _i < (arguments.length - 0); _i++) {
+            args[_i] = arguments[_i + 0];
+        }
+        var pairingNode;
+        for (var i = 0, arg; arg = args[i]; ++i) {
+            pairingNode = new PairingHeap(arg);
+            this.root = this.empty() ? pairingNode : this.root.merge(pairingNode, this.lessThan);
+        }
+        return pairingNode;
+    };
+
+    PriorityQueue.prototype.empty = function () {
+        return !this.root || !this.root.elem;
+    };
+
+    PriorityQueue.prototype.isHeap = function () {
+        return this.root.isHeap(this.lessThan);
+    };
+
+    PriorityQueue.prototype.forEach = function (f) {
+        this.root.forEach(f);
+    };
+
+    PriorityQueue.prototype.pop = function () {
+        if (this.empty()) {
+            return null;
+        }
+        var obj = this.root.min();
+        this.root = this.root.removeMin(this.lessThan);
+        return obj;
+    };
+
+    PriorityQueue.prototype.reduceKey = function (heapNode, newKey, setHeapNode) {
+        if (typeof setHeapNode === "undefined") { setHeapNode = null; }
+        this.root = this.root.decreaseKey(heapNode, newKey, setHeapNode, this.lessThan);
+    };
+    PriorityQueue.prototype.toString = function (selector) {
+        return this.root.toString(selector);
+    };
+
+    PriorityQueue.prototype.count = function () {
+        return this.root.count();
+    };
+    return PriorityQueue;
+})();
 var cola;
 (function (cola) {
     (function (shortestpaths) {
@@ -2316,6 +1980,15 @@ var cola;
                 this.neighbours = [];
             }
             return Node;
+        })();
+
+        var QueueEntry = (function () {
+            function QueueEntry(node, prev, d) {
+                this.node = node;
+                this.prev = prev;
+                this.d = d;
+            }
+            return QueueEntry;
         })();
 
         var Calculator = (function () {
@@ -2350,6 +2023,42 @@ var cola;
 
             Calculator.prototype.PathFromNodeToNode = function (start, end) {
                 return this.dijkstraNeighbours(start, end);
+            };
+
+            Calculator.prototype.PathFromNodeToNodeWithPrevCost = function (start, end, prevCost) {
+                var q = new PriorityQueue(function (a, b) {
+                    return a.d <= b.d;
+                }), u = this.neighbours[start], qu = new QueueEntry(u, null, 0), visitedFrom = {};
+                q.push(qu);
+                while (!q.empty()) {
+                    qu = q.pop();
+                    u = qu.node;
+                    if (u.id === end) {
+                        break;
+                    }
+                    var i = u.neighbours.length;
+                    while (i--) {
+                        var neighbour = u.neighbours[i], v = this.neighbours[neighbour.id];
+
+                        if (qu.prev && v.id === qu.prev.node.id)
+                            continue;
+
+                        var viduid = v.id + ',' + u.id;
+                        if (viduid in visitedFrom && visitedFrom[viduid] <= qu.d)
+                            continue;
+
+                        var cc = qu.prev ? prevCost(qu.prev.node.id, u.id, v.id) : 0, t = qu.d + neighbour.distance + cc;
+
+                        visitedFrom[viduid] = t;
+                        q.push(new QueueEntry(v, qu, t));
+                    }
+                }
+                var path = [];
+                while (qu.prev) {
+                    qu = qu.prev;
+                    path.push(qu.node.id);
+                }
+                return path;
             };
 
             Calculator.prototype.dijkstraNeighbours = function (start, dest) {
@@ -2396,6 +2105,848 @@ var cola;
     })(cola.shortestpaths || (cola.shortestpaths = {}));
     var shortestpaths = cola.shortestpaths;
 })(cola || (cola = {}));
+var cola;
+(function (cola) {
+    var NodeWrapper = (function () {
+        function NodeWrapper(id, rect, children) {
+            this.id = id;
+            this.rect = rect;
+            this.children = children;
+            this.leaf = typeof children === 'undefined' || children.length === 0;
+        }
+        return NodeWrapper;
+    })();
+    cola.NodeWrapper = NodeWrapper;
+    var Vert = (function () {
+        function Vert(id, x, y, node, line) {
+            if (typeof node === "undefined") { node = null; }
+            if (typeof line === "undefined") { line = null; }
+            this.id = id;
+            this.x = x;
+            this.y = y;
+            this.node = node;
+            this.line = line;
+        }
+        return Vert;
+    })();
+    cola.Vert = Vert;
+    var GridRouter = (function () {
+        function GridRouter(originalnodes, accessor) {
+            var _this = this;
+            this.originalnodes = originalnodes;
+            this.groupPadding = 12;
+            this.leaves = null;
+            this.nodes = originalnodes.map(function (v, i) {
+                return new NodeWrapper(i, accessor.getBounds(v), accessor.getChildren(v));
+            });
+            this.leaves = this.nodes.filter(function (v) {
+                return v.leaf;
+            });
+            this.groups = this.nodes.filter(function (g) {
+                return !g.leaf;
+            });
+            this.cols = this.getGridDim('x');
+            this.rows = this.getGridDim('y');
+
+            this.groups.forEach(function (v) {
+                return v.children.forEach(function (c) {
+                    return _this.nodes[c].parent = v;
+                });
+            });
+
+            this.root = { children: [] };
+            this.nodes.forEach(function (v) {
+                if (typeof v.parent === 'undefined') {
+                    v.parent = _this.root;
+                    _this.root.children.push(v.id);
+                }
+
+                v.ports = [];
+            });
+
+            this.backToFront = this.nodes.slice(0);
+            this.backToFront.sort(function (x, y) {
+                return _this.getDepth(x) - _this.getDepth(y);
+            });
+
+            var frontToBackGroups = this.backToFront.slice(0).reverse().filter(function (g) {
+                return !g.leaf;
+            });
+            frontToBackGroups.forEach(function (v) {
+                var r = cola.vpsc.Rectangle.empty();
+                v.children.forEach(function (c) {
+                    return r = r.union(_this.nodes[c].rect);
+                });
+                v.rect = r.inflate(_this.groupPadding);
+            });
+
+            var colMids = this.midPoints(this.cols.map(function (r) {
+                return r.x;
+            }));
+            var rowMids = this.midPoints(this.rows.map(function (r) {
+                return r.y;
+            }));
+
+            var rowx = colMids[0], rowX = colMids[colMids.length - 1];
+            var coly = rowMids[0], colY = rowMids[rowMids.length - 1];
+
+            var hlines = this.rows.map(function (r) {
+                return { x1: rowx, x2: rowX, y1: r.y, y2: r.y };
+            }).concat(rowMids.map(function (m) {
+                return { x1: rowx, x2: rowX, y1: m, y2: m };
+            }));
+
+            var vlines = this.cols.map(function (c) {
+                return { x1: c.x, x2: c.x, y1: coly, y2: colY };
+            }).concat(colMids.map(function (m) {
+                return { x1: m, x2: m, y1: coly, y2: colY };
+            }));
+
+            var lines = hlines.concat(vlines);
+
+            lines.forEach(function (l) {
+                return l.verts = [];
+            });
+
+            this.verts = [];
+            this.edges = [];
+
+            hlines.forEach(function (h) {
+                return vlines.forEach(function (v) {
+                    var p = new Vert(_this.verts.length, v.x1, h.y1);
+                    h.verts.push(p);
+                    v.verts.push(p);
+                    _this.verts.push(p);
+
+                    var i = _this.backToFront.length;
+                    while (i-- > 0) {
+                        var node = _this.backToFront[i], r = node.rect;
+                        var dx = Math.abs(p.x - r.cx()), dy = Math.abs(p.y - r.cy());
+                        if (dx < r.width() / 2 && dy < r.height() / 2) {
+                            p.node = node;
+                            break;
+                        }
+                    }
+                });
+            });
+
+            lines.forEach(function (l, li) {
+                _this.nodes.forEach(function (v, i) {
+                    v.rect.lineIntersections(l.x1, l.y1, l.x2, l.y2).forEach(function (intersect, j) {
+                        console.log(li + ',' + i + ',' + j + ':' + intersect.x + ',' + intersect.y);
+                        var p = new Vert(_this.verts.length, intersect.x, intersect.y, v, l);
+                        _this.verts.push(p);
+                        l.verts.push(p);
+                        v.ports.push(p);
+                    });
+                });
+
+                var isHoriz = Math.abs(l.y1 - l.y2) < 0.1;
+                var delta = function (a, b) {
+                    return isHoriz ? b.x - a.x : b.y - a.y;
+                };
+                l.verts.sort(delta);
+                for (var i = 1; i < l.verts.length; i++) {
+                    var u = l.verts[i - 1], v = l.verts[i];
+                    if (u.node && u.node === v.node && u.node.leaf)
+                        continue;
+                    _this.edges.push({ source: u.id, target: v.id, length: Math.abs(delta(u, v)) });
+                }
+            });
+        }
+        GridRouter.prototype.avg = function (a) {
+            return a.reduce(function (x, y) {
+                return x + y;
+            }) / a.length;
+        };
+        GridRouter.prototype.getGridDim = function (axis) {
+            var columns = [];
+            var ls = this.leaves.slice(0, this.leaves.length);
+            while (ls.length > 0) {
+                var r = ls[0].rect;
+                var col = ls.filter(function (v) {
+                    return v.rect['overlap' + axis.toUpperCase()](r);
+                });
+                columns.push(col);
+                col.forEach(function (v) {
+                    return ls.splice(ls.indexOf(v), 1);
+                });
+                col[axis] = this.avg(col.map(function (v) {
+                    return v.rect['c' + axis]();
+                }));
+            }
+            columns.sort(function (x, y) {
+                return x[axis] - y[axis];
+            });
+            return columns;
+        };
+
+        GridRouter.prototype.getDepth = function (v) {
+            var depth = 0;
+            while (v.parent !== this.root) {
+                depth++;
+                v = v.parent;
+            }
+            return depth;
+        };
+
+        GridRouter.prototype.midPoints = function (a) {
+            var gap = a[1] - a[0];
+            var mids = [a[0] - gap / 2];
+            for (var i = 1; i < a.length; i++) {
+                mids.push((a[i] + a[i - 1]) / 2);
+            }
+            mids.push(a[a.length - 1] + gap / 2);
+            return mids;
+        };
+
+        GridRouter.prototype.findLineage = function (v) {
+            var lineage = [v];
+            do {
+                v = v.parent;
+                lineage.push(v);
+            } while(v !== this.root);
+            return lineage.reverse();
+        };
+
+        GridRouter.prototype.findAncestorPathBetween = function (a, b) {
+            var aa = this.findLineage(a), ba = this.findLineage(b), i = 0;
+            while (aa[i] === ba[i])
+                i++;
+
+            return { commonAncestor: aa[i - 1], lineages: aa.slice(i).concat(ba.slice(i)) };
+        };
+
+        GridRouter.prototype.siblingObstacles = function (a, b) {
+            var _this = this;
+            var path = this.findAncestorPathBetween(a, b);
+            var lineageLookup = {};
+            path.lineages.forEach(function (v) {
+                return lineageLookup[v.id] = {};
+            });
+            var obstacles = path.commonAncestor.children.filter(function (v) {
+                return !(v in lineageLookup);
+            });
+
+            path.lineages.filter(function (v) {
+                return v.parent !== path.commonAncestor;
+            }).forEach(function (v) {
+                return obstacles = obstacles.concat(v.parent.children.filter(function (c) {
+                    return c !== v.id;
+                }));
+            });
+
+            return obstacles.map(function (v) {
+                return _this.nodes[v];
+            });
+        };
+
+        GridRouter.prototype.routeEdges = function (edges, source, target) {
+            var _this = this;
+            var routes = edges.map(function (e) {
+                return _this.route(source(e), target(e));
+            });
+
+            function nudgeSegments(x, y) {
+                var vsegments = [];
+                for (var ei = 0; ei < edges.length; ei++) {
+                    var route = routes[ei];
+                    for (var si = 0; si < route.length; si++) {
+                        var s = route[si];
+                        s.edgeid = ei;
+                        s.i = si;
+                        var sdx = s[1][x] - s[0][x];
+                        if (Math.abs(sdx) < 0.1) {
+                            vsegments.push(s);
+                        }
+                    }
+                }
+                vsegments.sort(function (a, b) {
+                    return a[0][x] - b[0][x];
+                });
+
+                var vsegmentsets = [];
+                var segmentset = null;
+                for (var i = 0; i < vsegments.length; i++) {
+                    var s = vsegments[i];
+                    if (!segmentset || Math.abs(s[0][x] - segmentset.pos) > 0.1) {
+                        segmentset = { pos: s[0][x], segments: [] };
+                        vsegmentsets.push(segmentset);
+                    }
+                    segmentset.segments.push(s);
+                }
+                var nudge = x == 'x' ? -10 : 10;
+                for (var i = 0; i < vsegmentsets.length; i++) {
+                    var ss = vsegmentsets[i];
+                    var events = [];
+                    for (var j = 0; j < ss.segments.length; j++) {
+                        var s = ss.segments[j];
+                        events.push({ type: 0, s: s, pos: Math.min(s[0][y], s[1][y]) });
+                        events.push({ type: 1, s: s, pos: Math.max(s[0][y], s[1][y]) });
+                    }
+                    events.sort(function (a, b) {
+                        return a.pos - b.pos + a.type - b.type;
+                    });
+                    var open = [];
+                    var openCount = 0;
+                    events.forEach(function (e) {
+                        if (e.type === 0) {
+                            open.push(e.s);
+                            openCount++;
+                        } else {
+                            openCount--;
+                        }
+                        if (openCount == 0) {
+                            var n = open.length;
+                            if (n > 1) {
+                                var x0 = ss.pos - (n - 1) * nudge / 2;
+                                open.forEach(function (s) {
+                                    s[0][x] = s[1][x] = x0;
+                                    var route = routes[s.edgeid];
+                                    if (s.i > 0) {
+                                        route[s.i - 1][1][x] = x0;
+                                    }
+                                    if (s.i < route.length - 1) {
+                                        route[s.i + 1][0][x] = x0;
+                                    }
+                                    x0 += nudge;
+                                });
+                            }
+                            open = [];
+                        }
+                    });
+                }
+            }
+            nudgeSegments('x', 'y');
+            nudgeSegments('y', 'x');
+            return routes;
+        };
+
+        GridRouter.prototype.route = function (s, t) {
+            var _this = this;
+            var source = this.nodes[s], target = this.nodes[t];
+            this.obstacles = this.siblingObstacles(source, target);
+
+            var obstacleLookup = {};
+            this.obstacles.forEach(function (o) {
+                return obstacleLookup[o.id] = o;
+            });
+            this.passableEdges = this.edges.filter(function (e) {
+                var u = _this.verts[e.source], v = _this.verts[e.target];
+                return !(u.node && u.node.id in obstacleLookup || v.node && v.node.id in obstacleLookup);
+            });
+
+            for (var i = 1; i < source.ports.length; i++) {
+                var u = source.ports[0].id;
+                var v = source.ports[i].id;
+                this.passableEdges.push({
+                    source: u,
+                    target: v,
+                    length: 0
+                });
+            }
+            for (var i = 1; i < target.ports.length; i++) {
+                var u = target.ports[0].id;
+                var v = target.ports[i].id;
+                this.passableEdges.push({
+                    source: u,
+                    target: v,
+                    length: 0
+                });
+            }
+
+            var getSource = function (e) {
+                return e.source;
+            }, getTarget = function (e) {
+                return e.target;
+            }, getLength = function (e) {
+                return e.length;
+            };
+
+            var shortestPathCalculator = new cola.shortestpaths.Calculator(this.verts.length, this.passableEdges, getSource, getTarget, getLength);
+            var bendPenalty = function (u, v, w) {
+                var a = _this.verts[u], b = _this.verts[v], c = _this.verts[w];
+                var dx = Math.abs(c.x - a.x), dy = Math.abs(c.y - a.y);
+
+                if (a.node === source && a.node === b.node || b.node === target && b.node === c.node)
+                    return 0;
+                return dx > 1 && dy > 1 ? 1000 : 0;
+            };
+            var shortestPath = shortestPathCalculator.PathFromNodeToNodeWithPrevCost(source.ports[0].id, target.ports[0].id, bendPenalty);
+            var pathSegments = [];
+            for (var i = 0; i < shortestPath.length; i++) {
+                var a = i === 0 ? this.nodes[target.id].ports[0] : this.verts[shortestPath[i - 1]];
+                var b = this.verts[shortestPath[i]];
+                if (a.node === source && b.node === source)
+                    continue;
+                if (a.node === target && b.node === target)
+                    continue;
+                pathSegments.push([a, b]);
+            }
+
+            var mergedSegments = [];
+            var a = pathSegments[0][0];
+            for (var i = 0; i < pathSegments.length; i++) {
+                var b = pathSegments[i][1], c = i < pathSegments.length - 1 ? pathSegments[i + 1][1] : null;
+                if (!c || c && bendPenalty(a.id, b.id, c.id) > 0) {
+                    mergedSegments.push([a, b]);
+                    a = b;
+                }
+            }
+            var result = mergedSegments.map(function (s) {
+                return [{ x: s[1].x, y: s[1].y }, { x: s[0].x, y: s[0].y }];
+            });
+            result.reverse();
+            return result;
+        };
+        return GridRouter;
+    })();
+    cola.GridRouter = GridRouter;
+})(cola || (cola = {}));
+var cola;
+(function (cola) {
+    function unionCount(a, b) {
+        var u = {};
+        for (var i in a)
+            u[i] = {};
+        for (var i in b)
+            u[i] = {};
+        return Object.keys(u).length;
+    }
+
+    function intersectionCount(a, b) {
+        var n = 0;
+        for (var i in a)
+            if (typeof b[i] !== 'undefined')
+                ++n;
+        return n;
+    }
+
+    function getNeighbours(links, la) {
+        var neighbours = {};
+        var addNeighbours = function (u, v) {
+            if (typeof neighbours[u] === 'undefined')
+                neighbours[u] = {};
+            neighbours[u][v] = {};
+        };
+        links.forEach(function (e) {
+            var u = la.getSourceIndex(e), v = la.getTargetIndex(e);
+            addNeighbours(u, v);
+            addNeighbours(v, u);
+        });
+        return neighbours;
+    }
+
+    function computeLinkLengths(links, w, f, la) {
+        var neighbours = getNeighbours(links, la);
+        links.forEach(function (l) {
+            var a = neighbours[la.getSourceIndex(l)];
+            var b = neighbours[la.getTargetIndex(l)];
+            la.setLength(l, 1 + w * f(a, b));
+        });
+    }
+
+    function symmetricDiffLinkLengths(links, la, w) {
+        if (typeof w === "undefined") { w = 1; }
+        computeLinkLengths(links, w, function (a, b) {
+            return Math.sqrt(unionCount(a, b) - intersectionCount(a, b));
+        }, la);
+    }
+    cola.symmetricDiffLinkLengths = symmetricDiffLinkLengths;
+
+    function jaccardLinkLengths(links, la, w) {
+        if (typeof w === "undefined") { w = 1; }
+        computeLinkLengths(links, w, function (a, b) {
+            return Math.min(Object.keys(a).length, Object.keys(b).length) < 1.1 ? 0 : intersectionCount(a, b) / unionCount(a, b);
+        }, la);
+    }
+    cola.jaccardLinkLengths = jaccardLinkLengths;
+
+    function generateDirectedEdgeConstraints(n, links, axis, la) {
+        var components = stronglyConnectedComponents(n, links, la);
+        var nodes = {};
+        components.filter(function (c) {
+            return c.length > 1;
+        }).forEach(function (c) {
+            return c.forEach(function (v) {
+                return nodes[v] = c;
+            });
+        });
+        var constraints = [];
+        links.forEach(function (l) {
+            var ui = la.getSourceIndex(l), vi = la.getTargetIndex(l), u = nodes[ui], v = nodes[vi];
+            if (!u || !v || u.component !== v.component) {
+                constraints.push({
+                    axis: axis,
+                    left: ui,
+                    right: vi,
+                    gap: la.getMinSeparation(l)
+                });
+            }
+        });
+        return constraints;
+    }
+    cola.generateDirectedEdgeConstraints = generateDirectedEdgeConstraints;
+
+    function stronglyConnectedComponents(numVertices, edges, la) {
+        var adjList = new Array(numVertices);
+        var index = new Array(numVertices);
+        var lowValue = new Array(numVertices);
+        var active = new Array(numVertices);
+
+        for (var i = 0; i < numVertices; ++i) {
+            adjList[i] = [];
+            index[i] = -1;
+            lowValue[i] = 0;
+            active[i] = false;
+        }
+
+        for (var i = 0; i < edges.length; ++i) {
+            adjList[la.getSourceIndex(edges[i])].push(la.getTargetIndex(edges[i]));
+        }
+
+        var count = 0;
+        var S = [];
+        var components = [];
+
+        function strongConnect(v) {
+            index[v] = count;
+            lowValue[v] = count;
+            active[v] = true;
+            count += 1;
+            S.push(v);
+            var e = adjList[v];
+            for (var i = 0; i < e.length; ++i) {
+                var u = e[i];
+                if (index[u] < 0) {
+                    strongConnect(u);
+                    lowValue[v] = Math.min(lowValue[v], lowValue[u]) | 0;
+                } else if (active[u]) {
+                    lowValue[v] = Math.min(lowValue[v], lowValue[u]);
+                }
+            }
+            if (lowValue[v] === index[v]) {
+                var component = [];
+                for (var i = S.length - 1; i >= 0; --i) {
+                    var w = S[i];
+                    active[w] = false;
+                    component.push(w);
+                    if (w === v) {
+                        S.length = i;
+                        break;
+                    }
+                }
+                components.push(component);
+            }
+        }
+
+        for (var i = 0; i < numVertices; ++i) {
+            if (index[i] < 0) {
+                strongConnect(i);
+            }
+        }
+
+        return components;
+    }
+})(cola || (cola = {}));
+var cola;
+(function (cola) {
+    (function (powergraph) {
+        var PowerEdge = (function () {
+            function PowerEdge(source, target, type) {
+                this.source = source;
+                this.target = target;
+                this.type = type;
+            }
+            return PowerEdge;
+        })();
+        powergraph.PowerEdge = PowerEdge;
+
+        var Configuration = (function () {
+            function Configuration(n, edges, linkAccessor) {
+                var _this = this;
+                this.linkAccessor = linkAccessor;
+                this.modules = new Array(n);
+                this.roots = new ModuleSet();
+                for (var i = 0; i < n; ++i) {
+                    this.roots.add(this.modules[i] = new Module(i));
+                }
+                this.R = edges.length;
+                edges.forEach(function (e) {
+                    var s = _this.modules[linkAccessor.getSourceIndex(e)], t = _this.modules[linkAccessor.getTargetIndex(e)], type = linkAccessor.getType(e);
+                    s.outgoing.add(type, t);
+                    t.incoming.add(type, s);
+                });
+            }
+            Configuration.prototype.merge = function (a, b) {
+                var inInt = a.incoming.intersection(b.incoming), outInt = a.outgoing.intersection(b.outgoing);
+                var children = new ModuleSet();
+                children.add(a);
+                children.add(b);
+                var m = new Module(this.modules.length, outInt, inInt, children);
+                this.modules.push(m);
+                var update = function (s, i, o) {
+                    s.forAll(function (ms, linktype) {
+                        ms.forAll(function (n) {
+                            var nls = n[i];
+                            nls.add(linktype, m);
+                            nls.remove(linktype, a);
+                            nls.remove(linktype, b);
+                            a[o].remove(linktype, n);
+                            b[o].remove(linktype, n);
+                        });
+                    });
+                };
+                update(outInt, "incoming", "outgoing");
+                update(inInt, "outgoing", "incoming");
+                this.R -= inInt.count() + outInt.count();
+                this.roots.remove(a);
+                this.roots.remove(b);
+                this.roots.add(m);
+                return m;
+            };
+
+            Configuration.prototype.rootMerges = function () {
+                var rs = this.roots.modules();
+                var n = rs.length;
+                var merges = new Array(n * (n - 1));
+                var ctr = 0;
+                for (var i = 0, i_ = n - 1; i < i_; ++i) {
+                    for (var j = i + 1; j < n; ++j) {
+                        var a = rs[i], b = rs[j];
+                        merges[ctr++] = { nEdges: this.nEdges(a, b), a: a, b: b };
+                    }
+                }
+                return merges;
+            };
+
+            Configuration.prototype.greedyMerge = function () {
+                var ms = this.rootMerges().sort(function (a, b) {
+                    return a.nEdges - b.nEdges;
+                });
+                var m = ms[0];
+                if (m.nEdges >= this.R)
+                    return false;
+                this.merge(m.a, m.b);
+                return true;
+            };
+
+            Configuration.prototype.nEdges = function (a, b) {
+                var inInt = a.incoming.intersection(b.incoming), outInt = a.outgoing.intersection(b.outgoing);
+                return this.R - inInt.count() - outInt.count();
+            };
+
+            Configuration.prototype.getGroupHierarchy = function (retargetedEdges) {
+                var _this = this;
+                var groups = [];
+                var root = {};
+                toGroups(this.roots, root, groups);
+                var es = this.allEdges();
+                es.forEach(function (e) {
+                    var a = _this.modules[e.source];
+                    var b = _this.modules[e.target];
+                    retargetedEdges.push(new PowerEdge(typeof a.gid === "undefined" ? e.source : groups[a.gid], typeof b.gid === "undefined" ? e.target : groups[b.gid], e.type));
+                });
+                return groups;
+            };
+
+            Configuration.prototype.allEdges = function () {
+                var es = [];
+                Configuration.getEdges(this.roots, es);
+                return es;
+            };
+
+            Configuration.getEdges = function (modules, es) {
+                modules.forAll(function (m) {
+                    m.getEdges(es);
+                    Configuration.getEdges(m.children, es);
+                });
+            };
+            return Configuration;
+        })();
+        powergraph.Configuration = Configuration;
+
+        function toGroups(modules, group, groups) {
+            modules.forAll(function (m) {
+                if (m.isLeaf()) {
+                    if (!group.leaves)
+                        group.leaves = [];
+                    group.leaves.push(m.id);
+                } else {
+                    var g = group;
+                    m.gid = groups.length;
+                    if (!m.isIsland()) {
+                        g = { id: m.gid };
+                        if (!group.groups)
+                            group.groups = [];
+                        group.groups.push(m.gid);
+                        groups.push(g);
+                    }
+                    toGroups(m.children, g, groups);
+                }
+            });
+        }
+
+        var Module = (function () {
+            function Module(id, outgoing, incoming, children) {
+                if (typeof outgoing === "undefined") { outgoing = new LinkSets(); }
+                if (typeof incoming === "undefined") { incoming = new LinkSets(); }
+                if (typeof children === "undefined") { children = new ModuleSet(); }
+                this.id = id;
+                this.outgoing = outgoing;
+                this.incoming = incoming;
+                this.children = children;
+            }
+            Module.prototype.getEdges = function (es) {
+                var _this = this;
+                this.outgoing.forAll(function (ms, edgetype) {
+                    ms.forAll(function (target) {
+                        es.push(new PowerEdge(_this.id, target.id, edgetype));
+                    });
+                });
+            };
+
+            Module.prototype.isLeaf = function () {
+                return this.children.count() === 0;
+            };
+
+            Module.prototype.isIsland = function () {
+                return this.outgoing.count() === 0 && this.incoming.count() === 0;
+            };
+            return Module;
+        })();
+        powergraph.Module = Module;
+
+        function intersection(m, n) {
+            var i = {};
+            for (var v in m)
+                if (v in n)
+                    i[v] = m[v];
+            return i;
+        }
+
+        var ModuleSet = (function () {
+            function ModuleSet() {
+                this.table = {};
+            }
+            ModuleSet.prototype.count = function () {
+                return Object.keys(this.table).length;
+            };
+            ModuleSet.prototype.intersection = function (other) {
+                var result = new ModuleSet();
+                result.table = intersection(this.table, other.table);
+                return result;
+            };
+            ModuleSet.prototype.intersectionCount = function (other) {
+                return this.intersection(other).count();
+            };
+            ModuleSet.prototype.contains = function (id) {
+                return id in this.table;
+            };
+            ModuleSet.prototype.add = function (m) {
+                this.table[m.id] = m;
+            };
+            ModuleSet.prototype.remove = function (m) {
+                delete this.table[m.id];
+            };
+            ModuleSet.prototype.forAll = function (f) {
+                for (var mid in this.table) {
+                    f(this.table[mid]);
+                }
+            };
+            ModuleSet.prototype.modules = function () {
+                var vs = [];
+                this.forAll(function (m) {
+                    return vs.push(m);
+                });
+                return vs;
+            };
+            return ModuleSet;
+        })();
+        powergraph.ModuleSet = ModuleSet;
+
+        var LinkSets = (function () {
+            function LinkSets() {
+                this.sets = {};
+                this.n = 0;
+            }
+            LinkSets.prototype.count = function () {
+                return this.n;
+            };
+            LinkSets.prototype.contains = function (id) {
+                var result = false;
+                this.forAllModules(function (m) {
+                    if (!result && m.id == id) {
+                        result = true;
+                    }
+                });
+                return result;
+            };
+            LinkSets.prototype.add = function (linktype, m) {
+                var s = linktype in this.sets ? this.sets[linktype] : this.sets[linktype] = new ModuleSet();
+                s.add(m);
+                ++this.n;
+            };
+            LinkSets.prototype.remove = function (linktype, m) {
+                var ms = this.sets[linktype];
+                ms.remove(m);
+                if (ms.count() === 0) {
+                    delete this.sets[linktype];
+                }
+                --this.n;
+            };
+            LinkSets.prototype.forAll = function (f) {
+                for (var linktype in this.sets) {
+                    f(this.sets[linktype], linktype);
+                }
+            };
+            LinkSets.prototype.forAllModules = function (f) {
+                this.forAll(function (ms, lt) {
+                    return ms.forAll(f);
+                });
+            };
+            LinkSets.prototype.intersection = function (other) {
+                var result = new LinkSets();
+                this.forAll(function (ms, lt) {
+                    if (lt in other.sets) {
+                        var i = ms.intersection(other.sets[lt]), n = i.count();
+                        if (n > 0) {
+                            result.sets[lt] = i;
+                            result.n += n;
+                        }
+                    }
+                });
+                return result;
+            };
+            return LinkSets;
+        })();
+        powergraph.LinkSets = LinkSets;
+
+        function intersectionCount(m, n) {
+            return Object.keys(intersection(m, n)).length;
+        }
+
+        function getGroups(nodes, links, la) {
+            var n = nodes.length, c = new powergraph.Configuration(n, links, la);
+            while (c.greedyMerge())
+                ;
+            var powerEdges = [];
+            var g = c.getGroupHierarchy(powerEdges);
+            powerEdges.forEach(function (e) {
+                var f = function (end) {
+                    var g = e[end];
+                    if (typeof g == "number")
+                        e[end] = nodes[g];
+                };
+                f("source");
+                f("target");
+            });
+            return { groups: g, powerEdges: powerEdges };
+        }
+        powergraph.getGroups = getGroups;
+    })(cola.powergraph || (cola.powergraph = {}));
+    var powergraph = cola.powergraph;
+})(cola || (cola = {}));
 
 /**
  * @module cola
@@ -2407,16 +2958,59 @@ var cola;
      * @class d3adaptor
      */
     cola.d3adaptor = function () {
-        var d3adaptor = {},
-            event = d3.dispatch("start", "tick", "end"),
+        var event = d3.dispatch("start", "tick", "end");
+
+        var adaptor = cola.adaptor({
+            trigger: function (e) {
+                event[e.type](e); // via d3 dispatcher, e.g. event.start(e);
+            },
+
+            on: function(type, listener){
+                return event.on(type, listener);
+            },
+
+            kick: function (tick) {
+                d3.timer(tick);
+            },
+
+            // use `node.call(adaptor.drag)` to make nodes draggable
+            drag: function () {
+                var drag = d3.behavior.drag()
+                    .origin(function(d){ return d; })
+                    .on("dragstart.d3adaptor", colaDragstart)
+                    .on("drag.d3adaptor", function (d) {
+                        d.px = d3.event.x, d.py = d3.event.y;
+                        adaptor.resume(); // restart annealing
+                    })
+                    .on("dragend.d3adaptor", colaDragend);
+
+                if (!arguments.length) return drag;
+
+                this//.on("mouseover.adaptor", colaMouseover)
+                    //.on("mouseout.adaptor", colaMouseout)
+                    .call(drag);
+            }
+        });
+        
+        return adaptor;
+    };
+
+    /**
+     * @class adaptor
+     */
+    cola.adaptor = function (options) {   
+        var adaptor = {},
+            trigger = options.trigger, // a function that is notified of events like "tick"
+            kick = options.kick, // a function that kicks off the simulation tick loop
             size = [1, 1],
             linkDistance = 20,
+            linkType = null,
             avoidOverlaps = false,
             handleDisconnected = true,
             drag,
             alpha,
             lastStress,
-			running = false,
+            running = false,
             nodes = [],
             groups = [],
             variables = [],
@@ -2430,11 +3024,20 @@ var cola;
             defaultNodeSize = 10,
             visibilityGraph = null;
 
-        d3adaptor.tick = function () {
+        adaptor.on = options.on; // a function for binding to events on the adapter
+        adaptor.drag = options.drag; // a function to allow for dragging of nodes
+
+        // give external access to drag-related helper functions
+        adaptor.dragstart = colaDragstart;
+        adaptor.dragend = colaDragend;
+        adaptor.mouseover = colaMouseover;
+        adaptor.mouseout = colaMouseout;
+
+        adaptor.tick = function () {
             if (alpha < threshold) {
-                event.end({ type: "end", alpha: alpha = 0 });
+                trigger({ type: "end", alpha: alpha = 0 });
                 delete lastStress;
-				running = false;
+                running = false;
                 return true;
             }
 
@@ -2475,7 +3078,7 @@ var cola;
                 }
             }
 
-            event.tick({ type: "tick", alpha: alpha });
+            trigger({ type: "tick", alpha: alpha });
         };
 
         /**
@@ -2485,7 +3088,7 @@ var cola;
          * @property nodes {Array}
          * @default empty list
          */
-        d3adaptor.nodes = function (v) {
+        adaptor.nodes = function (v) {
             if (!arguments.length) {
                 if (nodes.length === 0 && links.length > 0) {
                     var n = 0;
@@ -2500,7 +3103,7 @@ var cola;
                 return nodes;
             }
             nodes = v;
-            return d3adaptor;
+            return adaptor;
         };
 
         /**
@@ -2508,7 +3111,7 @@ var cola;
          * @property groups {Array}
          * @default empty list
          */
-        d3adaptor.groups = function (x) {
+        adaptor.groups = function (x) {
             if (!arguments.length) return groups;
             groups = x;
             rootGroup = {};
@@ -2522,14 +3125,14 @@ var cola;
             });
             rootGroup.leaves = nodes.filter(function (v) { return typeof v.parent === 'undefined'; });
             rootGroup.groups = groups.filter(function (g) { return typeof g.parent === 'undefined'; });
-            return d3adaptor;
+            return adaptor;
         };
 
-        d3adaptor.powerGraphGroups = function (f) {
-            var g = powergraph.getGroups(nodes, links, linkAccessor);
+        adaptor.powerGraphGroups = function (f) {
+            var g = cola.powergraph.getGroups(nodes, links, linkAccessor);
             this.groups(g.groups);
             f(g);
-            return d3adaptor;
+            return adaptor;
         }
 
         /**
@@ -2538,10 +3141,10 @@ var cola;
          * @type bool
          * @default false
          */
-        d3adaptor.avoidOverlaps = function (v) {
+        adaptor.avoidOverlaps = function (v) {
             if (!arguments.length) return avoidOverlaps;
             avoidOverlaps = v;
-            return d3adaptor;
+            return adaptor;
         }
 
         /**
@@ -2550,10 +3153,10 @@ var cola;
          * @type bool
          * @default false
          */
-        d3adaptor.handleDisconnected = function (v) {
+        adaptor.handleDisconnected = function (v) {
             if (!arguments.length) return handleDisconnected;
             handleDisconnected = v;
-            return d3adaptor;
+            return adaptor;
         }
 
 
@@ -2563,13 +3166,13 @@ var cola;
          * @param axis {string} 'x' for left-to-right, 'y' for top-to-bottom
          * @param minSeparation {number|link=>number} either a number specifying a minimum spacing required across all links or a function to return the minimum spacing for each link
          */
-        d3adaptor.flowLayout = function (axis, minSeparation) {
+        adaptor.flowLayout = function (axis, minSeparation) {
             if (!arguments.length) axis = 'y';
             directedLinkConstraints = {
                 axis: axis,
                 getMinSeparation: typeof minSeparation === 'number' ?  function () { return minSeparation } : minSeparation
             };
-            return d3adaptor;
+            return adaptor;
         }
 
         /**
@@ -2577,10 +3180,10 @@ var cola;
          * @property links {array}
          * @default empty list
          */
-        d3adaptor.links = function (x) {
+        adaptor.links = function (x) {
             if (!arguments.length) return links;
             links = x;
-            return d3adaptor;
+            return adaptor;
         };
 
         /**
@@ -2589,10 +3192,10 @@ var cola;
          * @type {array} 
          * @default empty list
          */
-        d3adaptor.constraints = function (c) {
+        adaptor.constraints = function (c) {
             if (!arguments.length) return constraints;
             constraints = c;
-            return d3adaptor;
+            return adaptor;
         }
 
         /**
@@ -2602,10 +3205,10 @@ var cola;
          * @type {Array of Array of Number}
          * @default null
          */
-        d3adaptor.distanceMatrix = function (d) {
+        adaptor.distanceMatrix = function (d) {
             if (!arguments.length) return distanceMatrix;
             distanceMatrix = d;
-            return d3adaptor;
+            return adaptor;
         }
 
         /**
@@ -2614,10 +3217,10 @@ var cola;
          * @property size
          * @type {Array of Number}
          */
-        d3adaptor.size = function (x) {
+        adaptor.size = function (x) {
             if (!arguments.length) return size;
             size = x;
-            return d3adaptor;
+            return adaptor;
         };
 
         /**
@@ -2625,26 +3228,31 @@ var cola;
          * @property defaultNodeSize
          * @type {Number}
          */
-        d3adaptor.defaultNodeSize = function (x) {
+        adaptor.defaultNodeSize = function (x) {
             if (!arguments.length) return defaultNodeSize;
             defaultNodeSize = x;
-            return d3adaptor;
+            return adaptor;
         };
 
-        d3adaptor.linkDistance = function (x) {
+        adaptor.linkDistance = function (x) {
             if (!arguments.length) 
-				return typeof linkDistance === "function" ? linkDistance() : linkDistance;
+                return typeof linkDistance === "function" ? linkDistance() : linkDistance;
             linkDistance = typeof x === "function" ? x : +x;
-            return d3adaptor;
+            return adaptor;
         };
 
-        d3adaptor.convergenceThreshold = function (x) {
+        adaptor.linkType = function (f) {
+            linkType = f;
+            return adaptor;
+        }
+
+        adaptor.convergenceThreshold = function (x) {
             if (!arguments.length) return threshold;
             threshold = typeof x === "function" ? x : +x;
-            return d3adaptor;
+            return adaptor;
         };
 
-        d3adaptor.alpha = function (x) {
+        adaptor.alpha = function (x) {
             if (!arguments.length) return alpha;
 
             x = +x;
@@ -2652,15 +3260,14 @@ var cola;
                 if (x > 0) alpha = x; // we might keep it hot
                 else alpha = 0; // or, next tick will dispatch "end"
             } else if (x > 0) { // otherwise, fire it up!
-				if (!running)
-				{
-					running = true;
-                event.start({ type: "start", alpha: alpha = x });
-                d3.timer(d3adaptor.tick);
-            }
+                if (!running) {
+                    running = true;
+                    trigger({ type: "start", alpha: alpha = x });
+                    kick( adaptor.tick );
+                }
             }
 
-            return d3adaptor;
+            return adaptor;
         };
 
         function getLinkLength(link) {
@@ -2671,18 +3278,22 @@ var cola;
             link.length = length;
         }
 
-        var linkAccessor = { getSourceIndex: getSourceIndex, getTargetIndex: getTargetIndex, setLength: setLinkLength };
-
-        d3adaptor.symmetricDiffLinkLengths = function (idealLength, w) {
-            cola.symmetricDiffLinkLengths(this.nodes().length, links, linkAccessor, w);
-            this.linkDistance(function (l) { return idealLength * l.length });
-            return d3adaptor;
+        function getLinkType(link) {
+            return typeof linkType === "function" ? linkType(link) : 0;
         }
 
-        d3adaptor.jaccardLinkLengths = function (idealLength, w) {
-            cola.jaccardLinkLengths(this.nodes().length, links, linkAccessor, w);
+        var linkAccessor = { getSourceIndex: getSourceIndex, getTargetIndex: getTargetIndex, setLength: setLinkLength, getType: getLinkType };
+
+        adaptor.symmetricDiffLinkLengths = function (idealLength, w) {
+            cola.symmetricDiffLinkLengths(links, linkAccessor, w);
             this.linkDistance(function (l) { return idealLength * l.length });
-            return d3adaptor;
+            return adaptor;
+        }
+
+        adaptor.jaccardLinkLengths = function (idealLength, w) {
+            cola.jaccardLinkLengths(links, linkAccessor, w);
+            this.linkDistance(function (l) { return idealLength * l.length });
+            return adaptor;
         }
 
         /**
@@ -2692,7 +3303,7 @@ var cola;
          * @param {number} [initialUserConstraintIterations=0] initial layout iterations with user-specified constraints
          * @param {number} [initialAllConstraintsIterations=0] initial layout iterations with all constraints including non-overlap
          */
-        d3adaptor.start = function () {
+        adaptor.start = function () {
             var i,
                 j,
                 n = this.nodes().length,
@@ -2764,6 +3375,17 @@ var cola;
             var initialAllConstraintsIterations = arguments.length > 2 ? arguments[2] : 0;
             this.avoidOverlaps(false);
             descent = new cola.Descent([x, y], D);
+
+            descent.locks.clear();
+            for (i = 0; i < n; ++i) {
+                o = nodes[i];
+                if (o.fixed) {
+                    o.px = o.x;
+                    o.py = o.y;
+                    var p = [o.x, o.y];
+                    descent.locks.add(i, p);
+                }
+            }
             descent.threshold = threshold;
 
             // apply initialIterations without user constraints or nonoverlap constraints
@@ -2775,7 +3397,11 @@ var cola;
 
             // subsequent iterations will apply all constraints
             this.avoidOverlaps(ao);
-            if (ao) descent.project = new cola.vpsc.Projection(nodes, groups, rootGroup, curConstraints, true).projectFunctions();
+            if (ao) {
+                nodes.forEach(function (v, i) { v.x = x[i], v.y = y[i]; });
+                descent.project = new cola.vpsc.Projection(nodes, groups, rootGroup, curConstraints, true).projectFunctions();
+                nodes.forEach(function (v, i) { x[i] = v.x, y[i] = v.y; });
+            }
 
             // allow not immediately connected nodes to relax apart (p-stress)
             descent.G = G;
@@ -2798,33 +3424,29 @@ var cola;
                 });
             }
             
-            return d3adaptor.resume();
+            return adaptor.resume();
         };
 
-        d3adaptor.resume = function () {
-            return d3adaptor.alpha(.1);
+        adaptor.resume = function () {
+            return adaptor.alpha(.1);
         };
 
-        d3adaptor.stop = function () {
-            return d3adaptor.alpha(0);
+        adaptor.stop = function () {
+            return adaptor.alpha(0);
         };
 
-        function d3_identity(d) {
-            return d;
-        }
-
-        d3adaptor.prepareEdgeRouting = function (nodeMargin) {
+        adaptor.prepareEdgeRouting = function (nodeMargin) {
             visibilityGraph = new cola.geom.TangentVisibilityGraph(
                     nodes.map(function (v) {
                         return v.bounds.inflate(-nodeMargin).vertices();
                     }));
         }
 
-        d3adaptor.routeEdge = function(d, draw) {
+        adaptor.routeEdge = function(d, draw) {
             var lineData = [];
-            if (d.source.id === 10 && d.target.id === 11) {
-                debugger;
-            }
+            //if (d.source.id === 10 && d.target.id === 11) {
+            //    debugger;
+            //}
             var vg2 = new cola.geom.TangentVisibilityGraph(visibilityGraph.P, { V: visibilityGraph.V, E: visibilityGraph.E }),
                 port1 = { x: d.source.x, y: d.source.y },
                 port2 = { x: d.target.x, y: d.target.y },
@@ -2864,21 +3486,6 @@ var cola;
             return lineData;
         }
 
-        // use `node.call(d3adaptor.drag)` to make nodes draggable
-        d3adaptor.drag = function () {
-            if (!drag) drag = d3.behavior.drag()
-                .origin(d3_identity)
-                .on("dragstart.d3adaptor", colaDragstart)
-                .on("drag.d3adaptor", dragmove)
-                .on("dragend.d3adaptor", colaDragend);
-
-            if (!arguments.length) return drag;
-
-            this//.on("mouseover.d3adaptor", colaMouseover)
-                //.on("mouseout.d3adaptor", colaMouseout)
-                .call(drag);
-        };
-
         //The link source and target may be just a node index, or they may be references to nodes themselves.
         function getSourceIndex(e) {
             return typeof e.source === 'number' ? e.source : e.source.index;
@@ -2889,16 +3496,11 @@ var cola;
             return typeof e.target === 'number' ? e.target : e.target.index;
         }
         // Get a string ID for a given link.
-        d3adaptor.linkId = function (e) {
+        adaptor.linkId = function (e) {
             return getSourceIndex(e) + "-" + getTargetIndex(e);
         }
 
-        function dragmove(d) {
-            d.px = d3.event.x, d.py = d3.event.y;
-            d3adaptor.resume(); // restart annealing
-        }
-
-        return d3.rebind(d3adaptor, event, "on");
+        return adaptor;
     };
 
     // The fixed property has three bits:
@@ -2908,6 +3510,7 @@ var cola;
     // Dragend is a special case: it also clears the hover state.
 
     function colaDragstart(d) {
+        d3.event.sourceEvent.stopPropagation();
         d.fixed |= 2; // set bit 2
         d.px = d.x, d.py = d.y; // set velocity to zero
     }
