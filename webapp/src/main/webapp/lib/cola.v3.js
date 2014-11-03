@@ -3128,6 +3128,10 @@ var cola;
             return adaptor;
         };
 
+        adaptor.rootGroup = function () {
+            return rootGroup;
+        };
+
         adaptor.powerGraphGroups = function (f) {
             var g = cola.powergraph.getGroups(nodes, links, linkAccessor);
             this.groups(g.groups);

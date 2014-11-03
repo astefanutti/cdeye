@@ -63,7 +63,7 @@ function display() {
     var powerGraph = null;
     d3cola.nodes(nodes)
         .links(links)
-        //.groups(graph.groups)
+        //.groups(groups)
         .powerGraphGroups(function (d) {
             powerGraph = d;
             d.groups.forEach(function (v) {
@@ -71,8 +71,16 @@ function display() {
             });
         });
 
+    var grp = {id:4, padding:10, "leaves": [nodes[6], nodes[9]]};
+    grp.leaves.forEach(function (v) {
+        v.parent = grp;
+    });
+    d3cola.groups().push(grp);
+    d3cola.rootGroup().groups.push(grp);
+
     var group = container.selectAll(".group")
-        .data(powerGraph.groups)
+        .data(d3cola.groups())
+//        .data(powerGraph.groups)
         .enter().append("rect")
         .attr("rx", 8).attr("ry", 8)
         .attr("class", "group")
