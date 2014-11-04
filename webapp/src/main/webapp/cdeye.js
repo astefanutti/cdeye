@@ -16,8 +16,14 @@ function display() {
     var nodes = [];
     var links = [];
 
+    var ids = [];
+
     for (var i = 0; i < beans.bean.length; i++) {
         nodes.push({name:beans.bean[i].classSimpleName, width:200, height:40});
+
+        if (beans.bean[i].classSimpleName == "MetricNameStrategyProducer")
+            ids.push(i);
+
         if (beans.bean[i].injectionPoints) {
             for (var j = 0; j < beans.bean[i].injectionPoints.injectionPoint.length; j++) {
                 var ip = parseInt(beans.bean[i].injectionPoints.injectionPoint[j].bean);
@@ -71,12 +77,20 @@ function display() {
             });
         });
 
-    var grp = {id:4, padding:10, "leaves": [nodes[6], nodes[9]]};
+    var grp = {id:3, padding:10, "leaves": [nodes[ids[0]], nodes[ids[1]]]};
     grp.leaves.forEach(function (v) {
         v.parent = grp;
     });
     d3cola.groups().push(grp);
     d3cola.rootGroup().groups.push(grp);
+
+    var idx = d3cola.rootGroup().leaves.indexOf(nodes[ids[0]]);
+    d3cola.rootGroup().leaves.splice(idx, 1);
+    idx = d3cola.rootGroup().leaves.indexOf(nodes[ids[1]]);
+    d3cola.rootGroup().leaves.splice(idx, 1);
+
+    var constraints = [{type:"alignment", axis:"x", offsets:[{node: ids[0], offset:0}, {node:ids[1], offset:0}]}];
+    d3cola.constraints(constraints);
 
     var group = container.selectAll(".group")
         .data(d3cola.groups())
