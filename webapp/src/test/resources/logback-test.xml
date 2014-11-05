@@ -7,7 +7,7 @@
     </appender>
 
     <logger name="org.jboss.weld">
-        <level value="DEBUG" />
+        <level value="INFO" />
     </logger>
 
     <root level="INFO">

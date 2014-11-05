@@ -60,10 +60,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <cdi.version>1.2</cdi.version>
         <javaee.version>7.0</javaee.version>
-        <weld.version>2.2.5.Final</weld.version>
+        <weld.version>2.2.6.Final</weld.version>
         <owb.version>1.5.0-SNAPSHOT</owb.version>
         <wildfly.version>8.1.0.Final</wildfly.version>
-        <jetty.version>9.2.2.v20140723</jetty.version>
+        <jetty.version>9.2.3.v20140905</jetty.version>
         <arquillian.version>1.1.5.Final</arquillian.version>
         <arquillian.weld.version>1.0.0.CR8</arquillian.weld.version>
         <shrinkwrap.resolver.version>2.1.1</shrinkwrap.resolver.version>

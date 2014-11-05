@@ -61,10 +61,36 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>properties-maven-plugin</artifactId>
+                <version>1.0-alpha-2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>set-system-properties</goal>
+                        </goals>
+                        <configuration>
+                            <properties>
+                                <property>
+                                    <name>logback.configurationFile</name>
+                                    <value>file:///${basedir}/src/test/resources/logback-test.xml</value>
+                                </property>
+                            </properties>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-maven-plugin</artifactId>
                 <configuration>
-                    <jvmArgs>-Dlogback.configurationFile=src/test/resources/logback-test.xml</jvmArgs>
+                    <!-- http://www.eclipse.org/jetty/documentation/current/troubleshooting-locked-files-on-windows.html -->
+                    <webAppConfig>
+                        <defaultsDescriptor>${basedir}/src/test/resources/webdefault.xml</defaultsDescriptor>
+                    </webAppConfig>
+                    <!-- Required for jetty:run-forked -->
+                    <!--jvmArgs>-Dlogback.configurationFile=file:///${basedir}/src/test/resources/logback-test.xml</jvmArgs-->
                 </configuration>
                 <dependencies>
                     <dependency>
