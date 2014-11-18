@@ -1,6 +1,6 @@
 var xhr = new XMLHttpRequest();
 xhr.open("GET", "cdeye/beans");
-xhr.setRequestHeader('Accept', 'application/json');
+xhr.setRequestHeader("Accept", "application/json");
 xhr.onreadystatechange = function(event) {
     if(xhr.readyState === 4)
         if (xhr.status === 200)
@@ -36,7 +36,9 @@ function display() {
         .linkDistance(100)
         .avoidOverlaps(true)
         .handleDisconnected(true)
-        //.symmetricDiffLinkLengths(5)
+        .convergenceThreshold(0.001)
+        //.symmetricDiffLinkLengths(1)
+        //.jaccardLinkLengths(10, 0.5)
         .size([window.innerWidth, window.innerHeight]);
 
     var svg = d3.select("body").append("svg")
@@ -45,20 +47,20 @@ function display() {
         .attr("preserveAspectRatio", "xMidYMid");
 
     // define arrow markers for graph links
-    svg.append('svg:defs')
-        .append('svg:marker')
-        .attr('id', 'end-arrow')
-        .attr('viewBox', '0 -5 10 10')
-        .attr('refX', 5)
-        .attr('markerWidth', 3)
-        .attr('markerHeight', 3)
-        .attr('orient', 'auto')
-        .append('svg:path')
-        .attr('d', 'M0,-5L10,0L0,5L2,0')
-        .attr('stroke-width', '0px')
-        .attr('fill', '#555');
+    svg.append("svg:defs")
+        .append("svg:marker")
+        .attr("id", "end-arrow")
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 5)
+        .attr("markerWidth", 3)
+        .attr("markerHeight", 3)
+        .attr("orient", "auto")
+        .append("svg:path")
+        .attr("d", "M0,-5L10,0L0,5L2,0")
+        .attr("stroke-width", "0px")
+        .attr("fill", "#555");
 
-    var container = svg.append('g');
+    var container = svg.append("g");
 
     svg.call(d3.behavior.zoom().on("zoom", function() {
         container.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
@@ -77,7 +79,7 @@ function display() {
             });
         });
 
-    var grp = {id:3, padding:10, "leaves": [nodes[ids[0]], nodes[ids[1]]]};
+    var grp = {id: 3, padding: 10, "leaves": [nodes[ids[0]], nodes[ids[1]]]};
     grp.leaves.forEach(function (v) {
         v.parent = grp;
     });
@@ -89,12 +91,12 @@ function display() {
     idx = d3cola.rootGroup().leaves.indexOf(nodes[ids[1]]);
     d3cola.rootGroup().leaves.splice(idx, 1);
 
-    var constraints = [{type:"alignment", axis:"x", offsets:[{node: ids[0], offset:0}, {node:ids[1], offset:0}]}];
+    var constraints = [{type: "alignment", axis: "x", offsets: [{node: ids[0], offset: 0}, {node: ids[1], offset: 0}]}];
     d3cola.constraints(constraints);
 
     var group = container.selectAll(".group")
         .data(d3cola.groups())
-//        .data(powerGraph.groups)
+        //.data(powerGraph.groups)
         .enter().append("rect")
         .attr("rx", 8).attr("ry", 8)
         .attr("class", "group")
@@ -134,9 +136,18 @@ function display() {
     //node.append("title")
     //    .text(function (d) { return d.name; });
 
+    d3cola.on("tick", function () {
+        update();
+        viewBox();
+    }).on("end", function () {
+        d3cola.on("tick", function () {
+            update();
+        });
+    });
+
     d3cola.start();
 
-    d3cola.on("tick", function () {
+    function update() {
         node.each(function (d) {
             d.bounds.setXCentre(d.x);
             d.bounds.setYCentre(d.y);
@@ -162,16 +173,16 @@ function display() {
             .attr("height", function (d) { return d.innerBounds.height(); });
 
         group.attr("x", function (d) { return d.innerBounds.x; })
-             .attr("y", function (d) { return d.innerBounds.y; })
-             .attr("width", function (d) { return d.innerBounds.width(); })
-             .attr("height", function (d) { return d.innerBounds.height(); });
+            .attr("y", function (d) { return d.innerBounds.y; })
+            .attr("width", function (d) { return d.innerBounds.width(); })
+            .attr("height", function (d) { return d.innerBounds.height(); });
 
         label.attr("x", function (d) { return d.x; })
-             .attr("y", function (d) {
-                 var h = this.getBBox().height;
-                 return d.y + h / 3.5;
-             });
-    }).on("end", viewBox);
+            .attr("y", function (d) {
+                var h = this.getBBox().height;
+                return d.y + h / 3.5;
+            });
+    }
 
     function viewBox() {
         var b = cola.vpsc.Rectangle.empty();
@@ -180,7 +191,5 @@ function display() {
             b = b.union(new cola.vpsc.Rectangle(bb.x, bb.x + bb.width, bb.y, bb.y + bb.height));
         });
         svg.attr("viewBox", b.x + " " + b.y + " " + (b.width()) + " " + (b.height()));
-
-        d3cola.on("end", function () {});
     }
 }

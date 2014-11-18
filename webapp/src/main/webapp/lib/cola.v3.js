@@ -2130,11 +2130,59 @@ var cola;
         return Vert;
     })();
     cola.Vert = Vert;
+
+    var LongestCommonSubsequence = (function () {
+        function LongestCommonSubsequence(s, t) {
+            this.s = s;
+            this.t = t;
+            var mf = LongestCommonSubsequence.findMatch(s, t);
+            var tr = t.slice(0).reverse();
+            var mr = LongestCommonSubsequence.findMatch(s, tr);
+            if (mf.length >= mr.length) {
+                this.length = mf.length;
+                this.si = mf.si;
+                this.ti = mf.ti;
+                this.reversed = false;
+            } else {
+                this.length = mr.length;
+                this.si = mr.si;
+                this.ti = t.length - mr.ti - mr.length;
+                this.reversed = true;
+            }
+        }
+        LongestCommonSubsequence.findMatch = function (s, t) {
+            var m = s.length;
+            var n = t.length;
+            var match = { length: 0, si: -1, ti: -1 };
+            var l = new Array(m);
+            for (var i = 0; i < m; i++) {
+                l[i] = new Array(n);
+                for (var j = 0; j < n; j++)
+                    if (s[i] === t[j]) {
+                        var v = l[i][j] = (i === 0 || j === 0) ? 1 : l[i - 1][j - 1] + 1;
+                        if (v > match.length) {
+                            match.length = v;
+                            match.si = i - v + 1;
+                            match.ti = j - v + 1;
+                        }
+                        ;
+                    } else
+                        l[i][j] = 0;
+            }
+            return match;
+        };
+        LongestCommonSubsequence.prototype.getSequence = function () {
+            return this.length >= 0 ? this.s.slice(this.si, this.si + this.length) : [];
+        };
+        return LongestCommonSubsequence;
+    })();
+    cola.LongestCommonSubsequence = LongestCommonSubsequence;
     var GridRouter = (function () {
-        function GridRouter(originalnodes, accessor) {
+        function GridRouter(originalnodes, accessor, groupPadding) {
+            if (typeof groupPadding === "undefined") { groupPadding = 12; }
             var _this = this;
             this.originalnodes = originalnodes;
-            this.groupPadding = 12;
+            this.groupPadding = groupPadding;
             this.leaves = null;
             this.nodes = originalnodes.map(function (v, i) {
                 return new NodeWrapper(i, accessor.getBounds(v), accessor.getChildren(v));
@@ -2233,7 +2281,6 @@ var cola;
             lines.forEach(function (l, li) {
                 _this.nodes.forEach(function (v, i) {
                     v.rect.lineIntersections(l.x1, l.y1, l.x2, l.y2).forEach(function (intersect, j) {
-                        console.log(li + ',' + i + ',' + j + ':' + intersect.x + ',' + intersect.y);
                         var p = new Vert(_this.verts.length, intersect.x, intersect.y, v, l);
                         _this.verts.push(p);
                         l.verts.push(p);
@@ -2341,85 +2388,213 @@ var cola;
             });
         };
 
-        GridRouter.prototype.routeEdges = function (edges, source, target) {
-            var _this = this;
-            var routes = edges.map(function (e) {
-                return _this.route(source(e), target(e));
-            });
-
-            function nudgeSegments(x, y) {
-                var vsegments = [];
-                for (var ei = 0; ei < edges.length; ei++) {
-                    var route = routes[ei];
-                    for (var si = 0; si < route.length; si++) {
-                        var s = route[si];
-                        s.edgeid = ei;
-                        s.i = si;
-                        var sdx = s[1][x] - s[0][x];
-                        if (Math.abs(sdx) < 0.1) {
-                            vsegments.push(s);
-                        }
+        GridRouter.getSegmentSets = function (routes, x, y) {
+            var vsegments = [];
+            for (var ei = 0; ei < routes.length; ei++) {
+                var route = routes[ei];
+                for (var si = 0; si < route.length; si++) {
+                    var s = route[si];
+                    s.edgeid = ei;
+                    s.i = si;
+                    var sdx = s[1][x] - s[0][x];
+                    if (Math.abs(sdx) < 0.1) {
+                        vsegments.push(s);
                     }
-                }
-                vsegments.sort(function (a, b) {
-                    return a[0][x] - b[0][x];
-                });
-
-                var vsegmentsets = [];
-                var segmentset = null;
-                for (var i = 0; i < vsegments.length; i++) {
-                    var s = vsegments[i];
-                    if (!segmentset || Math.abs(s[0][x] - segmentset.pos) > 0.1) {
-                        segmentset = { pos: s[0][x], segments: [] };
-                        vsegmentsets.push(segmentset);
-                    }
-                    segmentset.segments.push(s);
-                }
-                var nudge = x == 'x' ? -10 : 10;
-                for (var i = 0; i < vsegmentsets.length; i++) {
-                    var ss = vsegmentsets[i];
-                    var events = [];
-                    for (var j = 0; j < ss.segments.length; j++) {
-                        var s = ss.segments[j];
-                        events.push({ type: 0, s: s, pos: Math.min(s[0][y], s[1][y]) });
-                        events.push({ type: 1, s: s, pos: Math.max(s[0][y], s[1][y]) });
-                    }
-                    events.sort(function (a, b) {
-                        return a.pos - b.pos + a.type - b.type;
-                    });
-                    var open = [];
-                    var openCount = 0;
-                    events.forEach(function (e) {
-                        if (e.type === 0) {
-                            open.push(e.s);
-                            openCount++;
-                        } else {
-                            openCount--;
-                        }
-                        if (openCount == 0) {
-                            var n = open.length;
-                            if (n > 1) {
-                                var x0 = ss.pos - (n - 1) * nudge / 2;
-                                open.forEach(function (s) {
-                                    s[0][x] = s[1][x] = x0;
-                                    var route = routes[s.edgeid];
-                                    if (s.i > 0) {
-                                        route[s.i - 1][1][x] = x0;
-                                    }
-                                    if (s.i < route.length - 1) {
-                                        route[s.i + 1][0][x] = x0;
-                                    }
-                                    x0 += nudge;
-                                });
-                            }
-                            open = [];
-                        }
-                    });
                 }
             }
-            nudgeSegments('x', 'y');
-            nudgeSegments('y', 'x');
+            vsegments.sort(function (a, b) {
+                return a[0][x] - b[0][x];
+            });
+
+            var vsegmentsets = [];
+            var segmentset = null;
+            for (var i = 0; i < vsegments.length; i++) {
+                var s = vsegments[i];
+                if (!segmentset || Math.abs(s[0][x] - segmentset.pos) > 0.1) {
+                    segmentset = { pos: s[0][x], segments: [] };
+                    vsegmentsets.push(segmentset);
+                }
+                segmentset.segments.push(s);
+            }
+            return vsegmentsets;
+        };
+
+        GridRouter.nudgeSegs = function (x, y, routes, segments, leftOf, gap) {
+            var n = segments.length;
+            if (n <= 1)
+                return;
+            var vs = segments.map(function (s) {
+                return new cola.vpsc.Variable(s[0][x]);
+            });
+            var cs = [];
+            for (var i = 0; i < n; i++) {
+                for (var j = 0; j < n; j++) {
+                    if (i === j)
+                        continue;
+                    var s1 = segments[i], s2 = segments[j], e1 = s1.edgeid, e2 = s2.edgeid, lind = -1, rind = -1;
+
+                    if (x == 'x') {
+                        if (leftOf(e1, e2)) {
+                            if (s1[0][y] < s1[1][y]) {
+                                lind = j, rind = i;
+                            } else {
+                                lind = i, rind = j;
+                            }
+                        }
+                    } else {
+                        if (leftOf(e1, e2)) {
+                            if (s1[0][y] < s1[1][y]) {
+                                lind = i, rind = j;
+                            } else {
+                                lind = j, rind = i;
+                            }
+                        }
+                    }
+                    if (lind >= 0) {
+                        cs.push(new cola.vpsc.Constraint(vs[lind], vs[rind], gap));
+                    }
+                }
+            }
+            var solver = new cola.vpsc.Solver(vs, cs);
+            solver.solve();
+            vs.forEach(function (v, i) {
+                var s = segments[i];
+                var pos = v.position();
+                s[0][x] = s[1][x] = pos;
+                var route = routes[s.edgeid];
+                if (s.i > 0)
+                    route[s.i - 1][1][x] = pos;
+                if (s.i < route.length - 1)
+                    route[s.i + 1][0][x] = pos;
+            });
+        };
+
+        GridRouter.nudgeSegments = function (routes, x, y, leftOf, gap) {
+            var vsegmentsets = GridRouter.getSegmentSets(routes, x, y);
+
+            for (var i = 0; i < vsegmentsets.length; i++) {
+                var ss = vsegmentsets[i];
+                var events = [];
+                for (var j = 0; j < ss.segments.length; j++) {
+                    var s = ss.segments[j];
+                    events.push({ type: 0, s: s, pos: Math.min(s[0][y], s[1][y]) });
+                    events.push({ type: 1, s: s, pos: Math.max(s[0][y], s[1][y]) });
+                }
+                events.sort(function (a, b) {
+                    return a.pos - b.pos + a.type - b.type;
+                });
+                var open = [];
+                var openCount = 0;
+                events.forEach(function (e) {
+                    if (e.type === 0) {
+                        open.push(e.s);
+                        openCount++;
+                    } else {
+                        openCount--;
+                    }
+                    if (openCount == 0) {
+                        GridRouter.nudgeSegs(x, y, routes, open, leftOf, gap);
+                        open = [];
+                    }
+                });
+            }
+        };
+
+        GridRouter.prototype.routeEdges = function (edges, gap, source, target) {
+            var _this = this;
+            var routePaths = edges.map(function (e) {
+                return _this.route(source(e), target(e));
+            });
+            var order = cola.GridRouter.orderEdges(routePaths);
+            var routes = routePaths.map(function (e) {
+                return cola.GridRouter.makeSegments(e);
+            });
+            cola.GridRouter.nudgeSegments(routes, 'x', 'y', order, gap);
+            cola.GridRouter.nudgeSegments(routes, 'y', 'x', order, gap);
             return routes;
+        };
+
+        GridRouter.angleBetween2Lines = function (line1, line2) {
+            var angle1 = Math.atan2(line1[0].y - line1[1].y, line1[0].x - line1[1].x);
+            var angle2 = Math.atan2(line2[0].y - line2[1].y, line2[0].x - line2[1].x);
+            var diff = angle1 - angle2;
+            if (diff > Math.PI || diff < -Math.PI) {
+                diff = angle2 - angle1;
+            }
+            return diff;
+        };
+
+        GridRouter.isLeft = function (a, b, c) {
+            return ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) <= 0;
+        };
+
+        GridRouter.getOrder = function (pairs) {
+            var outgoing = {};
+            for (var i = 0; i < pairs.length; i++) {
+                var p = pairs[i];
+                if (typeof outgoing[p.l] === 'undefined')
+                    outgoing[p.l] = {};
+                outgoing[p.l][p.r] = true;
+            }
+            return function (l, r) {
+                return typeof outgoing[l] !== 'undefined' && outgoing[l][r];
+            };
+        };
+
+        GridRouter.orderEdges = function (edges) {
+            var edgeOrder = [];
+            for (var i = 0; i < edges.length - 1; i++) {
+                for (var j = i + 1; j < edges.length; j++) {
+                    var e = edges[i], f = edges[j], lcs = new cola.LongestCommonSubsequence(e, f);
+                    var u, vi, vj;
+                    if (lcs.length === 0)
+                        continue;
+                    if (lcs.reversed) {
+                        f.reverse();
+                        f.reversed = true;
+                        lcs = new cola.LongestCommonSubsequence(e, f);
+                    }
+                    if (lcs.length === e.length || lcs.length === f.length) {
+                        edgeOrder.push({ l: i, r: j });
+                        continue;
+                    }
+                    if (lcs.si + lcs.length >= e.length || lcs.ti + lcs.length >= f.length) {
+                        u = e[lcs.si + 1];
+                        vj = e[lcs.si - 1];
+                        vi = f[lcs.ti - 1];
+                    } else {
+                        u = e[lcs.si + lcs.length - 2];
+                        vi = e[lcs.si + lcs.length];
+                        vj = f[lcs.ti + lcs.length];
+                    }
+                    if (GridRouter.isLeft(u, vi, vj)) {
+                        edgeOrder.push({ l: j, r: i });
+                    } else {
+                        edgeOrder.push({ l: i, r: j });
+                    }
+                }
+            }
+
+            return cola.GridRouter.getOrder(edgeOrder);
+        };
+
+        GridRouter.makeSegments = function (path) {
+            function copyPoint(p) {
+                return { x: p.x, y: p.y };
+            }
+            var isStraight = function (a, b, c) {
+                return Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) < 0.001;
+            };
+            var segments = [];
+            var a = copyPoint(path[0]);
+            for (var i = 1; i < path.length; i++) {
+                var b = copyPoint(path[i]), c = i < path.length - 1 ? path[i + 1] : null;
+                if (!c || !isStraight(a, b, c)) {
+                    segments.push([a, b]);
+                    a = b;
+                }
+            }
+            return segments;
         };
 
         GridRouter.prototype.route = function (s, t) {
@@ -2472,32 +2647,17 @@ var cola;
                     return 0;
                 return dx > 1 && dy > 1 ? 1000 : 0;
             };
-            var shortestPath = shortestPathCalculator.PathFromNodeToNodeWithPrevCost(source.ports[0].id, target.ports[0].id, bendPenalty);
-            var pathSegments = [];
-            for (var i = 0; i < shortestPath.length; i++) {
-                var a = i === 0 ? this.nodes[target.id].ports[0] : this.verts[shortestPath[i - 1]];
-                var b = this.verts[shortestPath[i]];
-                if (a.node === source && b.node === source)
-                    continue;
-                if (a.node === target && b.node === target)
-                    continue;
-                pathSegments.push([a, b]);
-            }
 
-            var mergedSegments = [];
-            var a = pathSegments[0][0];
-            for (var i = 0; i < pathSegments.length; i++) {
-                var b = pathSegments[i][1], c = i < pathSegments.length - 1 ? pathSegments[i + 1][1] : null;
-                if (!c || c && bendPenalty(a.id, b.id, c.id) > 0) {
-                    mergedSegments.push([a, b]);
-                    a = b;
-                }
-            }
-            var result = mergedSegments.map(function (s) {
-                return [{ x: s[1].x, y: s[1].y }, { x: s[0].x, y: s[0].y }];
+            var shortestPath = shortestPathCalculator.PathFromNodeToNodeWithPrevCost(source.ports[0].id, target.ports[0].id, bendPenalty);
+
+            var pathPoints = shortestPath.reverse().map(function (vi) {
+                return _this.verts[vi];
             });
-            result.reverse();
-            return result;
+            pathPoints.push(this.nodes[target.id].ports[0]);
+
+            return pathPoints.filter(function (v, i) {
+                return !(i < pathPoints.length - 1 && pathPoints[i + 1].node === source && v.node === source || i > 0 && v.node === target && pathPoints[i - 1].node === target);
+            });
         };
         return GridRouter;
     })();
@@ -3475,18 +3635,18 @@ var cola;
                     lineData.push(vg2.V[shortestPath[i]].p);
                 lineData.push(cola.vpsc.makeEdgeTo(q, d.target.innerBounds, 5));
             }
-            lineData.forEach(function (v, i) {
-                if (i > 0) {
-                    var u = lineData[i - 1];
-                    nodes.forEach(function (node) {
-                        if (node.id === getSourceIndex(d) || node.id === getTargetIndex(d)) return;
-                        var ints = node.innerBounds.lineIntersections(u.x, u.y, v.x, v.y);
-                        if (ints.length > 0) {
-                            debugger;
-                        }
-                    })
-                }
-            })
+            //lineData.forEach(function (v, i) {
+            //    if (i > 0) {
+            //        var u = lineData[i - 1];
+            //        nodes.forEach(function (node) {
+            //            if (node.id === getSourceIndex(d) || node.id === getTargetIndex(d)) return;
+            //            var ints = node.innerBounds.lineIntersections(u.x, u.y, v.x, v.y);
+            //            if (ints.length > 0) {
+            //                debugger;
+            //            }
+            //        })
+            //    }
+            //})
             return lineData;
         }
 
