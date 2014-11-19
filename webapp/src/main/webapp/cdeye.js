@@ -16,13 +16,17 @@ function display() {
     var nodes = [];
     var links = [];
 
-    var ids = [];
+    var metricNameStrategyProducers = [];
+    var metricProducers = [];
 
     for (var i = 0; i < beans.bean.length; i++) {
-        nodes.push({name:beans.bean[i].classSimpleName, width:200, height:40});
+        nodes.push({name: beans.bean[i].classSimpleName, width: 200, height: 40});
 
+        // TODO: make the support for producers generic
         if (beans.bean[i].classSimpleName == "MetricNameStrategyProducer")
-            ids.push(i);
+            metricNameStrategyProducers.push(i);
+        if (beans.bean[i].classSimpleName == "MetricProducer")
+            metricProducers.push(i);
 
         if (beans.bean[i].injectionPoints) {
             for (var j = 0; j < beans.bean[i].injectionPoints.injectionPoint.length; j++) {
@@ -79,20 +83,44 @@ function display() {
             });
         });
 
-    var grp = {id: 3, padding: 10, "leaves": [nodes[ids[0]], nodes[ids[1]]]};
-    grp.leaves.forEach(function (v) {
-        v.parent = grp;
-    });
-    d3cola.groups().push(grp);
-    d3cola.rootGroup().groups.push(grp);
+    function addGroup(id, nodeIds) {
+        var leaves = [];
+        var offsets = [];
+        var groups = [];
+        var parents = {};
+        for (var k = 0; k < nodeIds.length; k++) {
+            var node = nodes[nodeIds[k]];
+            if (node.parent) {
+                parents[node.parent.id] = node.parent;
+            } else {
+                leaves.push(node);
+                var idx = d3cola.rootGroup().leaves.indexOf(node);
+                d3cola.rootGroup().leaves.splice(idx, 1);
+            }
+            offsets.push({node: nodeIds[k], offset: 0});
+        }
 
-    var idx = d3cola.rootGroup().leaves.indexOf(nodes[ids[0]]);
-    d3cola.rootGroup().leaves.splice(idx, 1);
-    idx = d3cola.rootGroup().leaves.indexOf(nodes[ids[1]]);
-    d3cola.rootGroup().leaves.splice(idx, 1);
+        var grp = {id: id, padding: 10, leaves: leaves, groups: groups};
+        grp.leaves.forEach(function (v) {
+            if (!v.parent)
+                v.parent = grp;
+        });
 
-    var constraints = [{type: "alignment", axis: "x", offsets: [{node: ids[0], offset: 0}, {node: ids[1], offset: 0}]}];
-    d3cola.constraints(constraints);
+        for (var groupId in parents) {
+            groups.push(parents[groupId]);
+            var idx = d3cola.rootGroup().groups.indexOf(parents[groupId]);
+            d3cola.rootGroup().groups.splice(idx, 1);
+        }
+
+        d3cola.groups().push(grp);
+        d3cola.rootGroup().groups.push(grp);
+
+        d3cola.constraints().push({type: "alignment", axis: "x", offsets: offsets});
+    }
+
+    // TODO: make the support for producers generic
+    addGroup(3, metricNameStrategyProducers);
+    addGroup(4, metricProducers);
 
     var group = container.selectAll(".group")
         .data(d3cola.groups())
@@ -133,16 +161,12 @@ function display() {
             d.height = b.height + extra;
         });
 
-    //node.append("title")
-    //    .text(function (d) { return d.name; });
-
     d3cola.on("tick", function () {
         update();
         viewBox();
     }).on("end", function () {
-        d3cola.on("tick", function () {
-            update();
-        });
+        d3cola.on("tick", update);
+        d3cola.on("end", function () {});
     });
 
     d3cola.start();
