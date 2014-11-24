@@ -3674,7 +3674,6 @@ var cola;
     // Dragend is a special case: it also clears the hover state.
 
     function colaDragstart(d) {
-        d3.event.sourceEvent.stopPropagation();
         d.fixed |= 2; // set bit 2
         d.px = d.x, d.py = d.y; // set velocity to zero
     }

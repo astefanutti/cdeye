@@ -66,8 +66,13 @@ function display() {
 
     var container = svg.append("g");
 
+    var updateViewBox = true;
     svg.call(d3.behavior.zoom().on("zoom", function() {
+        updateViewBox = false;
         container.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
+    }));
+    svg.call(d3.behavior.drag().on("dragstart", function() {
+        updateViewBox = false;
     }));
 
     var color = d3.scale.category20();
@@ -84,17 +89,16 @@ function display() {
         });
 
     function addGroup(id, nodeIds) {
-        var leaves = [];
-        var offsets = [];
-        var groups = [];
+        var idx;
         var parents = {};
+        var leaves = [], offsets = [], groups = [];
         for (var k = 0; k < nodeIds.length; k++) {
             var node = nodes[nodeIds[k]];
             if (node.parent) {
                 parents[node.parent.id] = node.parent;
             } else {
                 leaves.push(node);
-                var idx = d3cola.rootGroup().leaves.indexOf(node);
+                idx = d3cola.rootGroup().leaves.indexOf(node);
                 d3cola.rootGroup().leaves.splice(idx, 1);
             }
             offsets.push({node: nodeIds[k], offset: 0});
@@ -108,7 +112,7 @@ function display() {
 
         for (var groupId in parents) {
             groups.push(parents[groupId]);
-            var idx = d3cola.rootGroup().groups.indexOf(parents[groupId]);
+            idx = d3cola.rootGroup().groups.indexOf(parents[groupId]);
             d3cola.rootGroup().groups.splice(idx, 1);
         }
 
@@ -128,9 +132,7 @@ function display() {
         .enter().append("rect")
         .attr("rx", 8).attr("ry", 8)
         .attr("class", "group")
-        .style("fill", function (d, i) {
-            return color(i);
-        });
+        .style("fill", function (d, i) { return color(i); });
 
     var link = container.selectAll(".link")
         .data(powerGraph.powerEdges)
@@ -146,7 +148,13 @@ function display() {
         .attr("width", function (d) { return d.width + 2 * margin; })
         .attr("height", function (d) { return d.height + 2 * margin; })
         .attr("rx", 5).attr("ry", 5)
-        .call(d3cola.drag);
+        .call(d3cola.drag)
+        // override the dragstart listener to stop the viewBox update and the drag event propagation
+        .call(d3cola.drag().on("dragstart.d3adaptor", function(d) {
+            updateViewBox = false;
+            d3.event.sourceEvent.stopPropagation();
+            d3cola.dragstart(d);
+        }));
 
     var label = container.selectAll(".label")
         .data(nodes)
@@ -154,6 +162,12 @@ function display() {
         .attr("class", "label")
         .text(function (d) { return d.name; })
         .call(d3cola.drag)
+        // override the dragstart listener to stop the viewBox update and the drag event propagation
+        .call(d3cola.drag().on("dragstart.d3adaptor", function(d) {
+            updateViewBox = false;
+            d3.event.sourceEvent.stopPropagation();
+            d3cola.dragstart(d);
+        }))
         .each(function (d) {
             var b = this.getBBox();
             var extra = 2 * margin + 2 * pad;
@@ -163,7 +177,8 @@ function display() {
 
     d3cola.on("tick", function () {
         update();
-        viewBox();
+        if (updateViewBox)
+            viewBox();
     }).on("end", function () {
         d3cola.on("tick", update);
         d3cola.on("end", function () {});
