@@ -15,7 +15,7 @@
  */
 package io.astefanutti.cdeye.web;
 
-import io.astefanutti.cdeye.core.CdEyeExtension;
+import io.astefanutti.cdeye.core.CdEye;
 import io.astefanutti.cdeye.core.model.CdEyeBean;
 import io.astefanutti.cdeye.core.model.CdEyeBeans;
 
@@ -34,7 +34,7 @@ import javax.ws.rs.core.MediaType;
 public class BeansResource {
 
     @Inject
-    private CdEyeExtension cdEye;
+    private CdEye cdEye;
 
     // TODO: find a way to hide CDEye Web internal beans
 

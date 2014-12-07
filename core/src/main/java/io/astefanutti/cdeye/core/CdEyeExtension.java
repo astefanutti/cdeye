@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class CdEyeExtension implements Extension {
+public class CdEyeExtension implements Extension, CdEye {
 
     // TODO: enable extensibility of package exclusion
     private final Set<String> exclusions = new HashSet<>(Arrays.asList("org.jboss.weld", "javax.enterprise.inject", "org.glassfish.jersey.gf.cdi"));
@@ -45,19 +45,23 @@ public class CdEyeExtension implements Extension {
 
     private BeanManager manager;
 
+    @Override
     public Collection<Bean<?>> getBeans() {
         return Collections.unmodifiableSet(beans.keySet());
     }
 
+    @Override
     public boolean isProducer(Bean<?> bean) {
         return beans.get(bean) instanceof AnnotatedMember;
     }
 
+    @Override
     public String getProducerName(Bean<?> bean) {
         // TODO: add assertions
         return ((AnnotatedMember) beans.get(bean)).getJavaMember().getName();
     }
 
+    @Override
     public List<Bean<?>> getProducers(Class<?> clazz) {
         List<Bean<?>> producerBeans = new ArrayList<>();
         for (Map.Entry<Bean<?>, Annotated> bean : beans.entrySet())
@@ -67,11 +71,13 @@ public class CdEyeExtension implements Extension {
         return producerBeans;
     }
 
+    @Override
     public Bean<?> resolveBean(InjectionPoint ip) {
         Set<Bean<?>> beans = manager.getBeans(ip.getType(), ip.getQualifiers().toArray(new Annotation[ip.getQualifiers().size()]));
         return manager.resolve(beans);
     }
 
+    @Override
     public String getBeanId(Bean<?> bean) {
         // TODO: find a better strategy to map ids
         int id = 0;
