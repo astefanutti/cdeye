@@ -57,6 +57,7 @@ public class BeansResource {
                 for (Bean<?> producer : cdEye.getProducers(bean.getBeanClass()))
                     cdEyeBean.withProducers()
                         .withNewProducer()
+                        .withName(cdEye.getProducerName(producer))
                         .withBean(cdEyeBean(producer));
 
             beans.withBean(cdEyeBean);

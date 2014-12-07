@@ -18,19 +18,22 @@ package io.astefanutti.cdeye.core;
 
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.AfterDeploymentValidation;
+import javax.enterprise.inject.spi.Annotated;
+import javax.enterprise.inject.spi.AnnotatedMember;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.Extension;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.enterprise.inject.spi.ProcessBean;
-import javax.enterprise.inject.spi.ProcessProducerField;
-import javax.enterprise.inject.spi.ProcessProducerMethod;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class CdEyeExtension implements Extension {
@@ -38,25 +41,28 @@ public class CdEyeExtension implements Extension {
     // TODO: enable extensibility of package exclusion
     private final Set<String> exclusions = new HashSet<>(Arrays.asList("org.jboss.weld", "javax.enterprise.inject", "org.glassfish.jersey.gf.cdi"));
 
-    private final List<Bean<?>> beans = new ArrayList<>();
-
-    private final List<Bean<?>> producers = new ArrayList<>();
+    private final Map<Bean<?>, Annotated> beans = new LinkedHashMap<>();
 
     private BeanManager manager;
 
-    public List<Bean<?>> getBeans() {
-        return Collections.unmodifiableList(beans);
+    public Collection<Bean<?>> getBeans() {
+        return Collections.unmodifiableSet(beans.keySet());
     }
 
     public boolean isProducer(Bean<?> bean) {
-        return producers.contains(bean);
+        return beans.get(bean) instanceof AnnotatedMember;
+    }
+
+    public String getProducerName(Bean<?> bean) {
+        // TODO: add assertions
+        return ((AnnotatedMember) beans.get(bean)).getJavaMember().getName();
     }
 
     public List<Bean<?>> getProducers(Class<?> clazz) {
         List<Bean<?>> producerBeans = new ArrayList<>();
-        for (Bean<?> bean : producers)
-            if (bean.getBeanClass().equals(clazz))
-                producerBeans.add(bean);
+        for (Map.Entry<Bean<?>, Annotated> bean : beans.entrySet())
+            if (bean.getKey().getBeanClass().equals(clazz) && bean.getValue() instanceof AnnotatedMember)
+                producerBeans.add(bean.getKey());
 
         return producerBeans;
     }
@@ -67,20 +73,19 @@ public class CdEyeExtension implements Extension {
     }
 
     public String getBeanId(Bean<?> bean) {
-        return String.valueOf(beans.indexOf(bean));
+        // TODO: find a better strategy to map ids
+        int id = 0;
+        for (Bean<?> b : beans.keySet())
+            if (b.equals(bean))
+                return String.valueOf(id);
+            else
+                id++;
+        throw new IllegalArgumentException("Bean [" + bean + "] is not deployed!");
     }
 
     private <X> void processBean(@Observes ProcessBean<X> pb) {
         if (!isExcludedPackage(pb.getBean().getBeanClass().getPackage()))
-            beans.add(pb.getBean());
-    }
-
-    private <T, X> void processProducerField(@Observes ProcessProducerField<T, X> ppf) {
-        producers.add(ppf.getBean());
-    }
-
-    private <T, X> void processProducerMethod(@Observes ProcessProducerMethod<T, X> ppm) {
-        producers.add(ppm.getBean());
+            beans.put(pb.getBean(), pb.getAnnotated());
     }
 
     private void afterDeploymentValidation(@Observes AfterDeploymentValidation adv, BeanManager manager) {

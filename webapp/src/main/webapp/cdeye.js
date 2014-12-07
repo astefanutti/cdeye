@@ -21,7 +21,8 @@ function display() {
 
     for (i = 0; i < beans.bean.length; i++) {
         var bean = beans.bean[i];
-        nodes.push({name: bean.classSimpleName, width: 200, height: 40});
+        if (!nodes[i])
+            nodes[i] = {name: bean.classSimpleName, width: 200, height: 40};
         if (bean.injectionPoints) {
             var injectionPoints = bean.injectionPoints.injectionPoint;
             for (j = 0; j < injectionPoints.length; j++)
@@ -30,8 +31,13 @@ function display() {
         if (bean.producers) {
             var producers = bean.producers.producer;
             var producerGroup = [];
-            for (j = 0; j < producers.length; j++)
-                producerGroup.push(parseInt(producers[j].bean));
+            for (j = 0; j < producers.length; j++) {
+                var producer = parseInt(producers[j].bean);
+                producerGroup.push(producer);
+                // Override the node with the producer member name
+                nodes[producer] = {name: producers[j].name, width: 200, height: 40};
+            }
+            // TODO: find a way to have the declaring bean at the top of the group
             producerGroup.push(i);
             producerGroups.push(producerGroup);
         }
