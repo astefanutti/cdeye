@@ -15,24 +15,25 @@ function display() {
 
     var nodes = [];
     var links = [];
+    var producerGroups = [];
 
-    var metricNameStrategyProducers = [];
-    var metricProducers = [];
+    var i, j;
 
-    for (var i = 0; i < beans.bean.length; i++) {
-        nodes.push({name: beans.bean[i].classSimpleName, width: 200, height: 40});
-
-        // TODO: make the support for producers generic
-        if (beans.bean[i].classSimpleName == "MetricNameStrategyProducer")
-            metricNameStrategyProducers.push(i);
-        if (beans.bean[i].classSimpleName == "MetricProducer")
-            metricProducers.push(i);
-
-        if (beans.bean[i].injectionPoints) {
-            for (var j = 0; j < beans.bean[i].injectionPoints.injectionPoint.length; j++) {
-                var ip = parseInt(beans.bean[i].injectionPoints.injectionPoint[j].bean);
-                links.push({source: ip, target: i});
-            }
+    for (i = 0; i < beans.bean.length; i++) {
+        var bean = beans.bean[i];
+        nodes.push({name: bean.classSimpleName, width: 200, height: 40});
+        if (bean.injectionPoints) {
+            var injectionPoints = bean.injectionPoints.injectionPoint;
+            for (j = 0; j < injectionPoints.length; j++)
+                links.push({source: parseInt(injectionPoints[j].bean), target: i});
+        }
+        if (bean.producers) {
+            var producers = bean.producers.producer;
+            var producerGroup = [];
+            for (j = 0; j < producers.length; j++)
+                producerGroup.push(parseInt(producers[j].bean));
+            producerGroup.push(i);
+            producerGroups.push(producerGroup);
         }
     }
 
@@ -95,6 +96,7 @@ function display() {
         for (var k = 0; k < nodeIds.length; k++) {
             var node = nodes[nodeIds[k]];
             if (node.parent) {
+                // TODO: handle second level group nesting
                 parents[node.parent.id] = node.parent;
             } else {
                 leaves.push(node);
@@ -122,9 +124,10 @@ function display() {
         d3cola.constraints().push({type: "alignment", axis: "x", offsets: offsets});
     }
 
-    // TODO: make the support for producers generic
-    addGroup(3, metricNameStrategyProducers);
-    addGroup(4, metricProducers);
+    // Add groups for the producers and their declaring bean
+    var rid = d3cola.rootGroup().groups.length - 1;
+    for (i = 0; i < producerGroups.length; i++)
+        addGroup(rid, producerGroups[i]);
 
     var group = container.selectAll(".group")
         .data(d3cola.groups())

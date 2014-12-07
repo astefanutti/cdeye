@@ -48,11 +48,17 @@ public class BeansResource {
                 // Skip InjectionPoint and BeanManager injection points
                 if (ip.getType().equals(InjectionPoint.class) || ip.getType().equals(BeanManager.class))
                     continue;
-
                 cdEyeBean.withInjectionPoints()
                     .withNewInjectionPoint()
-                        .withBean(cdEyeBean(cdEye.resolveBean(ip)));
+                    .withBean(cdEyeBean(cdEye.resolveBean(ip)));
             }
+
+            if (!cdEye.isProducer(bean))
+                for (Bean<?> producer : cdEye.getProducers(bean.getBeanClass()))
+                    cdEyeBean.withProducers()
+                        .withNewProducer()
+                        .withBean(cdEyeBean(producer));
+
             beans.withBean(cdEyeBean);
         }
         return beans;

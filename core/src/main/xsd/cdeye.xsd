@@ -14,6 +14,7 @@
             <xs:element name="className" type="xs:string" />
             <xs:element name="classSimpleName" type="xs:string" />
             <xs:element ref="injectionPoints" />
+            <xs:element ref="producers" />
         </xs:sequence>
         <xs:attribute name="id" type="xs:ID"/>
     </xs:complexType>
@@ -27,6 +28,20 @@
     </xs:element>
 
     <xs:complexType name="InjectionPoint">
+        <xs:sequence>
+            <xs:element name="bean" type="xs:IDREF" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:element name="producers">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="producer" type="Producer" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="Producer">
         <xs:sequence>
             <xs:element name="bean" type="xs:IDREF" />
         </xs:sequence>

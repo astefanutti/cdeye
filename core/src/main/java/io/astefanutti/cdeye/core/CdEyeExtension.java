@@ -23,6 +23,8 @@ import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.Extension;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.enterprise.inject.spi.ProcessBean;
+import javax.enterprise.inject.spi.ProcessProducerField;
+import javax.enterprise.inject.spi.ProcessProducerMethod;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,10 +40,25 @@ public class CdEyeExtension implements Extension {
 
     private final List<Bean<?>> beans = new ArrayList<>();
 
+    private final List<Bean<?>> producers = new ArrayList<>();
+
     private BeanManager manager;
 
     public List<Bean<?>> getBeans() {
         return Collections.unmodifiableList(beans);
+    }
+
+    public boolean isProducer(Bean<?> bean) {
+        return producers.contains(bean);
+    }
+
+    public List<Bean<?>> getProducers(Class<?> clazz) {
+        List<Bean<?>> producerBeans = new ArrayList<>();
+        for (Bean<?> bean : producers)
+            if (bean.getBeanClass().equals(clazz))
+                producerBeans.add(bean);
+
+        return producerBeans;
     }
 
     public Bean<?> resolveBean(InjectionPoint ip) {
@@ -56,6 +73,14 @@ public class CdEyeExtension implements Extension {
     private <X> void processBean(@Observes ProcessBean<X> pb) {
         if (!isExcludedPackage(pb.getBean().getBeanClass().getPackage()))
             beans.add(pb.getBean());
+    }
+
+    private <T, X> void processProducerField(@Observes ProcessProducerField<T, X> ppf) {
+        producers.add(ppf.getBean());
+    }
+
+    private <T, X> void processProducerMethod(@Observes ProcessProducerMethod<T, X> ppm) {
+        producers.add(ppm.getBean());
     }
 
     private void afterDeploymentValidation(@Observes AfterDeploymentValidation adv, BeanManager manager) {
