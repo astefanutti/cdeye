@@ -145,7 +145,7 @@ function display() {
 
     var link = container.selectAll(".link")
         .data(powerGraph.powerEdges)
-        .enter().append("line")
+        .enter().append("path")
         .attr("class", "link");
 
     var margin = 10, pad = 12;
@@ -189,47 +189,45 @@ function display() {
         if (updateViewBox)
             viewBox();
     }).on("end", function () {
+        routeEdges();
         d3cola.on("tick", update);
-        d3cola.on("end", function () {});
+        d3cola.on("end", routeEdges);
     });
+
+    function routeEdges() {
+        d3cola.prepareEdgeRouting(20);
+        link.attr("d", function (d) {
+            return lineFunction(d3cola.routeEdge(d));
+        });
+    }
+
+    var lineFunction = d3.svg.line()
+        .x(function (d) { return d.x; })
+        .y(function (d) { return d.y; })
+        .interpolate("linear");
 
     d3cola.start();
 
     function update() {
-        node.each(function (d) {
-            d.bounds.setXCentre(d.x);
-            d.bounds.setYCentre(d.y);
-            d.innerBounds = d.bounds.inflate(-margin);
-        });
+        node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
+            .attr("x", function (d) { return d.innerBounds.x; })
+            .attr("y", function (d) { return d.innerBounds.y; })
+            .attr("width", function (d) { return d.innerBounds.width(); })
+            .attr("height", function (d) { return d.innerBounds.height(); });
 
-        group.each(function (d) {
-            return d.innerBounds = d.bounds.inflate(-margin);
-        });
+        group.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
+            .attr("x", function (d) { return d.innerBounds.x; })
+            .attr("y", function (d) { return d.innerBounds.y; })
+            .attr("width", function (d) { return d.innerBounds.width(); })
+            .attr("height", function (d) { return d.innerBounds.height(); });
 
-        link.each(function (d) {
+        link.attr("d", function (d) {
             cola.vpsc.makeEdgeBetween(d, d.source.innerBounds, d.target.innerBounds, 5);
+            return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
         });
-
-        link.attr("x1", function (d) { return d.sourceIntersection.x; })
-            .attr("y1", function (d) { return d.sourceIntersection.y; })
-            .attr("x2", function (d) { return d.arrowStart.x; })
-            .attr("y2", function (d) { return d.arrowStart.y; });
-
-        node.attr("x", function (d) { return d.innerBounds.x; })
-            .attr("y", function (d) { return d.innerBounds.y; })
-            .attr("width", function (d) { return d.innerBounds.width(); })
-            .attr("height", function (d) { return d.innerBounds.height(); });
-
-        group.attr("x", function (d) { return d.innerBounds.x; })
-            .attr("y", function (d) { return d.innerBounds.y; })
-            .attr("width", function (d) { return d.innerBounds.width(); })
-            .attr("height", function (d) { return d.innerBounds.height(); });
 
         label.attr("x", function (d) { return d.x; })
-            .attr("y", function (d) {
-                var h = this.getBBox().height;
-                return d.y + h / 3.5;
-            });
+            .attr("y", function (d) { return d.y + this.getBBox().height / 3.5; });
     }
 
     function viewBox() {
