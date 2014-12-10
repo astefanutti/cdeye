@@ -1,5 +1,5 @@
 var xhr = new XMLHttpRequest();
-xhr.open("GET", "cdeye/beans");
+xhr.open("GET", "http://localhost:8080/cdeye/beans");
 xhr.setRequestHeader("Accept", "application/json");
 xhr.onreadystatechange = function(event) {
     if(xhr.readyState === 4)
@@ -22,7 +22,7 @@ function display() {
     for (i = 0; i < beans.bean.length; i++) {
         var bean = beans.bean[i];
         if (!nodes[i])
-            nodes[i] = {name: bean.classSimpleName, width: 200, height: 40};
+            nodes[i] = {id: i, name: bean.classSimpleName, width: 200, height: 40};
         if (bean.injectionPoints) {
             var injectionPoints = bean.injectionPoints.injectionPoint;
             for (j = 0; j < injectionPoints.length; j++)
@@ -35,7 +35,7 @@ function display() {
                 var producer = parseInt(producers[j].bean);
                 producerGroup.push(producer);
                 // Override the node with the producer member name
-                nodes[producer] = {name: producers[j].name, width: 200, height: 40};
+                nodes[producer] = {id: producer, name: producers[j].name, width: 200, height: 40};
             }
             // TODO: find a way to have the declaring bean at the top of the group
             producerGroup.push(i);
@@ -47,9 +47,9 @@ function display() {
         .linkDistance(100)
         .avoidOverlaps(true)
         .handleDisconnected(true)
-        .convergenceThreshold(0.001)
+        .convergenceThreshold(0.01)
         //.symmetricDiffLinkLengths(1)
-        //.jaccardLinkLengths(10, 0.5)
+        .jaccardLinkLengths(100)
         .size([window.innerWidth, window.innerHeight]);
 
     var svg = d3.select("body").append("svg")
@@ -195,16 +195,20 @@ function display() {
     });
 
     function routeEdges() {
-        d3cola.prepareEdgeRouting(20);
+        d3cola.prepareEdgeRouting(0);
         link.attr("d", function (d) {
-            return lineFunction(d3cola.routeEdge(d));
+            // FIXME: edge routing does not work with power graph groups
+            if (!d.source.name || !d.target.name)
+                return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
+            else
+                return lineFunction(d3cola.routeEdge(d));
         });
     }
 
     var lineFunction = d3.svg.line()
         .x(function (d) { return d.x; })
         .y(function (d) { return d.y; })
-        .interpolate("linear");
+        .interpolate("basis");
 
     d3cola.start();
 
