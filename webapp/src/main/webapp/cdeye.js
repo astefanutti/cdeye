@@ -16,29 +16,34 @@ function display() {
     var nodes = [];
     var links = [];
     var producerGroups = [];
+    var beanToNodeId = {};
 
     var i, j;
 
+    // First loop on the beans
     for (i = 0; i < beans.bean.length; i++) {
         var bean = beans.bean[i];
-        if (!nodes[i])
-            nodes[i] = {id: i, name: bean.classSimpleName, width: 200, height: 40};
+        beanToNodeId[bean.id] = i;
+        nodes[i] = {id: i, name: bean.classSimpleName, width: 200, height: 40};
+    }
+    // Second loop on the beans graph
+    for (i = 0; i < beans.bean.length; i++) {
+        bean = beans.bean[i];
         if (bean.injectionPoints) {
             var injectionPoints = bean.injectionPoints.injectionPoint;
             for (j = 0; j < injectionPoints.length; j++)
-                links.push({source: parseInt(injectionPoints[j].bean), target: i});
+                links.push({source: beanToNodeId[injectionPoints[j].bean], target: i});
         }
         if (bean.producers) {
             var producers = bean.producers.producer;
             // TODO: find a way to have the declaring bean at the top of the group
             var producerGroup = [i];
             for (j = 0; j < producers.length; j++) {
-                var producer = parseInt(producers[j].bean);
+                var producer = beanToNodeId[producers[j].bean];
                 producerGroup.push(producer);
                 // Override the node with the producer member name
-                nodes[producer] = {id: producer, name: producers[j].name, width: 200, height: 40};
+                nodes[producer].name = producers[j].name;
             }
-            producerGroup.push(i);
             producerGroups.push(producerGroup);
         }
     }
