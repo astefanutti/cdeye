@@ -3,7 +3,7 @@
 ## Examples
 
 The following interactive visualization is automatically generated for the [Metrics CDI](https://github.com/astefanutti/metrics-cdi) library, you can click on it to see it in action:
-[![Click to see it in action!](https://raw.github.com/astefanutti/cdeye/gh-pages/metrics.png)](https://raw.github.com/astefanutti/cdeye/gh-pages/test.html?example=metrics.json)
+[![Click to see it in action!](https://raw.github.com/astefanutti/cdeye/gh-pages/metrics.png)](http://astefanutti.github.io/cdeye/test.html?example=metrics.json)
 
 ## License
 
