@@ -1,5 +1,5 @@
 var xhr = new XMLHttpRequest();
-xhr.open("GET", "http://localhost:8080/cdeye/beans");
+xhr.open("GET", "cdeye/beans");
 xhr.setRequestHeader("Accept", "application/json");
 xhr.onreadystatechange = function(event) {
     if(xhr.readyState === 4)
@@ -30,14 +30,14 @@ function display() {
         }
         if (bean.producers) {
             var producers = bean.producers.producer;
-            var producerGroup = [];
+            // TODO: find a way to have the declaring bean at the top of the group
+            var producerGroup = [i];
             for (j = 0; j < producers.length; j++) {
                 var producer = parseInt(producers[j].bean);
                 producerGroup.push(producer);
                 // Override the node with the producer member name
                 nodes[producer] = {id: producer, name: producers[j].name, width: 200, height: 40};
             }
-            // TODO: find a way to have the declaring bean at the top of the group
             producerGroup.push(i);
             producerGroups.push(producerGroup);
         }
