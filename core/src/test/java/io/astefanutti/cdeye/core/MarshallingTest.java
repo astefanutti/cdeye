@@ -50,15 +50,18 @@ public class MarshallingTest {
 
         JAXBContext context = JAXBContext.newInstance(CdEyeBeans.class);
         Marshaller marshaller = context.createMarshaller();
+        marshaller.setProperty("eclipselink.media-type", "application/json");
+        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
         Writer writer = new StringWriter();
         marshaller.marshal(beans, writer);
 
         System.out.println(writer.toString());
 
         Unmarshaller unmarshaller = context.createUnmarshaller();
+        unmarshaller.setProperty("eclipselink.media-type", "application/json");
         CdEyeBeans beans2 = (CdEyeBeans) unmarshaller.unmarshal(new StringReader(writer.toString()));
 
-        CdEyeBean bean = (CdEyeBean) beans.getBean().get(1).getInjectionPoints().getInjectionPoint().get(0).getBean();
+        CdEyeBean bean = (CdEyeBean) beans2.getBean().get(1).getInjectionPoints().getInjectionPoint().get(0).getBean();
         System.out.println(bean.getClassName());
      }
 }
