@@ -27,6 +27,8 @@ public interface CdEye {
 
     boolean isProducer(Bean<?> bean);
 
+    boolean isExcluded(Bean<?> bean);
+
     String getProducerName(Bean<?> bean);
 
     public List<Bean<?>> getProducers(Class<?> clazz);

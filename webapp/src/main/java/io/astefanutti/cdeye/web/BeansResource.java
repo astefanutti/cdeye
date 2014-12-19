@@ -20,6 +20,8 @@ import io.astefanutti.cdeye.core.model.CdEyeBean;
 import io.astefanutti.cdeye.core.model.CdEyeBeans;
 
 import javax.annotation.ManagedBean;
+import javax.enterprise.event.Event;
+import javax.enterprise.inject.Instance;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.InjectionPoint;
@@ -28,6 +30,12 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import java.lang.reflect.Array;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 
 @ManagedBean
 @Path("beans")
@@ -46,13 +54,17 @@ public class BeansResource {
             CdEyeBean cdEyeBean = cdEyeBean(bean);
             for (InjectionPoint ip : bean.getInjectionPoints()) {
                 // Skip InjectionPoint and BeanManager injection points
-                if (ip.getType().equals(InjectionPoint.class) || ip.getType().equals(BeanManager.class))
+                if (InjectionPoint.class.equals(ip.getType()) || BeanManager.class.equals(ip.getType()))
                     continue;
-                cdEyeBean.withInjectionPoints()
-                    .withNewInjectionPoint()
-                    .withBean(cdEyeBean(cdEye.resolveBean(ip)));
+                if (Instance.class.equals(getRawType(ip.getType())) || Event.class.equals(getRawType(ip.getType())))
+                    // TODO: support programmatic lookup and events
+                    continue;
+                Bean<?> resolved = cdEye.resolveBean(ip);
+                if (!cdEye.isExcluded(resolved))
+                    cdEyeBean.withInjectionPoints()
+                        .withNewInjectionPoint()
+                        .withBean(cdEyeBean(resolved));
             }
-
             if (!cdEye.isProducer(bean))
                 for (Bean<?> producer : cdEye.getProducers(bean.getBeanClass()))
                     cdEyeBean.withProducers()
@@ -70,5 +82,33 @@ public class BeansResource {
             .withId(cdEye.getBeanId(bean))
             .withClassName(bean.getBeanClass().getName())
             .withClassSimpleName(bean.getBeanClass().getSimpleName());
+    }
+
+    private Class<?> getRawType(Type type) {
+        if (type instanceof Class<?>) {
+            return Class.class.cast(type);
+        }
+        else if (type instanceof ParameterizedType) {
+            return getRawType(ParameterizedType.class.cast(type).getRawType());
+        }
+        else if (type instanceof TypeVariable<?>) {
+            return getBound(TypeVariable.class.cast(type).getBounds());
+        }
+        else if (type instanceof WildcardType) {
+            return getBound(WildcardType.class.cast(type).getUpperBounds());
+        }
+        else if (type instanceof GenericArrayType) {
+            Class<?> rawType = getRawType(GenericArrayType.class.cast(type).getGenericComponentType());
+            if (rawType != null)
+                return Array.newInstance(rawType, 0).getClass();
+        }
+        return null;
+    }
+
+    private Class<?> getBound(Type[] bounds) {
+        if (bounds.length == 0)
+            return Object.class;
+        else
+            return getRawType(bounds[0]);
     }
 }

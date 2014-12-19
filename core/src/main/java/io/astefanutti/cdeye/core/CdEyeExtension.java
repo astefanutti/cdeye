@@ -25,6 +25,7 @@ import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.Extension;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.enterprise.inject.spi.ProcessBean;
+import javax.xml.bind.JAXBException;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,7 +40,7 @@ import java.util.Set;
 public class CdEyeExtension implements Extension, CdEye {
 
     // TODO: enable extensibility of package exclusion
-    private final Set<String> exclusions = new HashSet<>(Arrays.asList("org.jboss.weld", "javax.enterprise.inject", "org.glassfish.jersey.gf.cdi"));
+    private final Set<String> exclusions = new HashSet<>(Arrays.asList("org.jboss.weld", "javax.enterprise.inject", "javax.transaction", "org.glassfish.jersey.gf.cdi"));
 
     private final Map<Bean<?>, Annotated> beans = new LinkedHashMap<>();
 
@@ -78,6 +79,16 @@ public class CdEyeExtension implements Extension, CdEye {
     }
 
     @Override
+    public boolean isExcluded(Bean<?> bean) {
+        Package pkg = bean.getBeanClass().getPackage();
+        for (String exclusion : exclusions)
+            if (pkg.getName().startsWith(exclusion))
+                return true;
+
+        return false;
+    }
+
+    @Override
     public String getBeanId(Bean<?> bean) {
         // TODO: find a better strategy to map ids
         int id = 0;
@@ -86,23 +97,15 @@ public class CdEyeExtension implements Extension, CdEye {
                 return String.valueOf(id);
             else
                 id++;
-        throw new IllegalArgumentException("Bean [" + bean + "] is not deployed!");
+        throw new IllegalArgumentException(bean + " is not deployed!");
     }
 
     private <X> void processBean(@Observes ProcessBean<X> pb) {
-        if (!isExcludedPackage(pb.getBean().getBeanClass().getPackage()))
+        if (!isExcluded(pb.getBean()))
             beans.put(pb.getBean(), pb.getAnnotated());
     }
 
-    private void afterDeploymentValidation(@Observes AfterDeploymentValidation adv, BeanManager manager) {
+    private void afterDeploymentValidation(@Observes AfterDeploymentValidation adv, BeanManager manager) throws JAXBException {
         this.manager = manager;
-    }
-
-    private boolean isExcludedPackage(Package pkg) {
-        for (String exclusion : exclusions)
-            if (pkg.getName().startsWith(exclusion))
-                return true;
-
-        return false;
     }
 }
