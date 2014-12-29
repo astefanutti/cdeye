@@ -121,7 +121,13 @@ function display() {
                 else
                     inside.push(parent.leaves[i]);
             }
-            if (parent.leaves.length - inside.length < 2) {
+            if (inside.length == 1 && outside.length == 1) {
+                moveNode(inside[0], group);
+                copyEdges(inside[0], parent);
+                moveNode(outside[0], parent.parent ? parent.parent : d3cola.rootGroup());
+                moveEdges(outside[0], parent);
+                deleteGroup(parent);
+            } else if (parent.leaves.length - inside.length < 2) {
                 for (i = 0; i < outside.length; i++) {
                     moveNode(outside[i], d3cola.rootGroup());
                     copyEdges(outside[i], parent);
@@ -162,11 +168,26 @@ function display() {
         addGroup(group, parent);
     }
 
+    function deleteGroup(group) {
+        var parent = group.parent ? group.parent : d3cola.rootGroup();
+        parent.groups.splice(parent.groups.indexOf(group), 1);
+        d3cola.groups().splice(d3cola.groups().indexOf(group), 1);
+    }
+
     function addGroup(group, parent) {
         if (!parent.groups)
             parent.groups = [];
         parent.groups.push(group);
         group.parent = parent !== d3cola.rootGroup() ? parent : null;
+    }
+
+    function moveEdges(element, group) {
+        var length = powerGraph.powerEdges.length;
+        for (var i = 0; i < length; i++)
+            if (powerGraph.powerEdges[i].source === group)
+                powerGraph.powerEdges[i].source = element;
+            else if (powerGraph.powerEdges[i].target === group)
+                powerGraph.powerEdges[i].target = element;
     }
 
     function copyEdges(element, group) {
