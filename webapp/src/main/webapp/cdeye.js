@@ -24,6 +24,7 @@ function display() {
     for (i = 0; i < beans.bean.length; i++) {
         var bean = beans.bean[i];
         beanToNodeId[bean.id] = i;
+        // TODO: the id should be the original id, not the index, though that is required for edge routing
         nodes[i] = {id: i, name: bean.classSimpleName, width: 200, height: 40};
     }
     // Second loop on the beans graph
@@ -100,45 +101,106 @@ function display() {
             });
         });
 
-    function addGroup(id, nodeIds) {
-        var idx;
+    function addProducerGroup(nodeIds) {
         var parents = {};
-        var leaves = [], offsets = [], groups = [];
-        for (var k = 0; k < nodeIds.length; k++) {
-            var node = nodes[nodeIds[k]];
-            if (node.parent) {
+        var group = newGroup({padding: 10, leaves: []});
+        for (var i = 0; i < nodeIds.length; i++) {
+            var node = nodes[nodeIds[i]];
+            if (node.parent)
                 // TODO: handle second level group nesting
                 parents[node.parent.id] = node.parent;
-            } else {
-                leaves.push(node);
-                idx = d3cola.rootGroup().leaves.indexOf(node);
-                d3cola.rootGroup().leaves.splice(idx, 1);
-            }
-            offsets.push({node: nodeIds[k], offset: 0});
+            else
+                moveNode(node, group);
         }
-
-        var grp = {id: id, padding: 10, leaves: leaves, groups: groups};
-        grp.leaves.forEach(function (v) {
-            if (!v.parent)
-                v.parent = grp;
-        });
-
         for (var groupId in parents) {
-            groups.push(parents[groupId]);
-            idx = d3cola.rootGroup().groups.indexOf(parents[groupId]);
-            d3cola.rootGroup().groups.splice(idx, 1);
+            var parent = parents[groupId];
+            var inside = [], outside = [];
+            for (i = 0; i < parent.leaves.length; i++) {
+                if (nodeIds.indexOf(parent.leaves[i].id) < 0)
+                    outside.push(parent.leaves[i]);
+                else
+                    inside.push(parent.leaves[i]);
+            }
+            if (parent.leaves.length - inside.length < 2) {
+                for (i = 0; i < outside.length; i++) {
+                    moveNode(outside[i], d3cola.rootGroup());
+                    copyEdges(outside[i], parent);
+                }
+                moveGroup(parent, group);
+            } else if (parent.leaves.length - outside.length < 2) {
+                for (i = 0; i < inside.length; i++) {
+                    moveNode(inside[i], group);
+                    copyEdges(inside[i], parent);
+                }
+            } else {
+                var g = newGroup({padding: 10, leaves: [], parent: group});
+                for (i = 0; i < inside.length; i++)
+                    moveNode(inside[i], g);
+                copyEdges(g, parent);
+            }
         }
+        d3cola.constraints().push(addAlignment(group, {type: "alignment", axis: "x", offsets: []}));
+    }
 
-        d3cola.groups().push(grp);
-        d3cola.rootGroup().groups.push(grp);
+    function newGroup(group) {
+        group.id = d3cola.groups().length;
+        d3cola.groups().push(group);
+        if (group.parent)
+            addGroup(group, group.parent);
+        else
+            addGroup(group, d3cola.rootGroup());
+        return group;
+    }
 
-        d3cola.constraints().push({type: "alignment", axis: "x", offsets: offsets});
+    function moveNode(node, group) {
+        if (node.parent)
+            node.parent.leaves.splice(node.parent.leaves.indexOf(node), 1);
+        else
+            d3cola.rootGroup().leaves.splice(d3cola.rootGroup().leaves.indexOf(node), 1);
+        group.leaves.push(node);
+        if (group !== d3cola.rootGroup())
+            node.parent = group;
+        else
+            node.parent = null;
+    }
+
+    function moveGroup(group, parent) {
+        if (group.parent)
+            group.parent.leaves.splice(group.parent.leaves.indexOf(group), 1);
+        else
+            d3cola.rootGroup().groups.splice(d3cola.rootGroup().groups.indexOf(group), 1);
+        addGroup(group, parent);
+    }
+
+    function addGroup(group, parent) {
+        if (!parent.groups)
+            parent.groups = [];
+        parent.groups.push(group);
+        if (parent !== d3cola.rootGroup())
+            group.parent = parent;
+    }
+
+    function copyEdges(element, group) {
+        var length = powerGraph.powerEdges.length;
+        for (var i = 0; i < length; i++)
+            if (powerGraph.powerEdges[i].source === group)
+                powerGraph.powerEdges.push(new cola.powergraph.PowerEdge(element, powerGraph.powerEdges[i].target, powerGraph.powerEdges[i].type));
+            else if (powerGraph.powerEdges[i].target === group)
+                powerGraph.powerEdges.push(new cola.powergraph.PowerEdge(powerGraph.powerEdges[i].source, element, powerGraph.powerEdges[i].type));
+    }
+
+    function addAlignment(group, constraint) {
+        for (var i = 0; i < group.leaves.length; i++)
+            constraint.offsets.push({node: group.leaves[i].id, offset: 0});
+        if (group.groups)
+            for (i = 0; i < group.groups.length; i++)
+                addAlignment(group.groups[i], constraint);
+        return constraint;
     }
 
     // Add groups for the producers and their declaring bean
-    var rid = d3cola.rootGroup().groups.length - 1;
     for (i = 0; i < producerGroups.length; i++)
-        addGroup(rid, producerGroups[i]);
+        addProducerGroup(producerGroups[i]);
 
     var group = container.selectAll(".group")
         .data(d3cola.groups())
