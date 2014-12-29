@@ -145,30 +145,20 @@ function display() {
     function newGroup(group) {
         group.id = d3cola.groups().length;
         d3cola.groups().push(group);
-        if (group.parent)
-            addGroup(group, group.parent);
-        else
-            addGroup(group, d3cola.rootGroup());
+        addGroup(group, group.parent ? group.parent : d3cola.rootGroup());
         return group;
     }
 
     function moveNode(node, group) {
-        if (node.parent)
-            node.parent.leaves.splice(node.parent.leaves.indexOf(node), 1);
-        else
-            d3cola.rootGroup().leaves.splice(d3cola.rootGroup().leaves.indexOf(node), 1);
+        var g = node.parent ? node.parent : d3cola.rootGroup();
+        g.leaves.splice(g.leaves.indexOf(node), 1);
         group.leaves.push(node);
-        if (group !== d3cola.rootGroup())
-            node.parent = group;
-        else
-            node.parent = null;
+        node.parent = group !== d3cola.rootGroup() ? group : null;
     }
 
     function moveGroup(group, parent) {
-        if (group.parent)
-            group.parent.leaves.splice(group.parent.leaves.indexOf(group), 1);
-        else
-            d3cola.rootGroup().groups.splice(d3cola.rootGroup().groups.indexOf(group), 1);
+        var g = group.parent ? group.parent : d3cola.rootGroup();
+        g.groups.splice(g.groups.indexOf(group), 1);
         addGroup(group, parent);
     }
 
@@ -176,8 +166,7 @@ function display() {
         if (!parent.groups)
             parent.groups = [];
         parent.groups.push(group);
-        if (parent !== d3cola.rootGroup())
-            group.parent = parent;
+        group.parent = parent !== d3cola.rootGroup() ? parent : null;
     }
 
     function copyEdges(element, group) {
