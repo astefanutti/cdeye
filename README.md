@@ -1,5 +1,10 @@
 # Visualization Framework for CDI
 
+[![Build Status][Travis badge]][Travis build]
+
+[Travis badge]: https://travis-ci.org/astefanutti/cdeye.svg
+[Travis build]: https://travis-ci.org/astefanutti/cdeye
+
 ## Examples
 
 The following interactive visualization is automatically generated for the [Metrics CDI](https://github.com/astefanutti/metrics-cdi) library, you can click on it to see it in action:

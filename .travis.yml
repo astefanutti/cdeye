@@ -1,11 +1,16 @@
+sudo: false
+
 language: java
 
-branches:
-  only:
-    - master
+cache:
+  directories:
+  - $HOME/.m2
 
 install:
   - mvn clean install -Dmaven.test.skip.exec
+
+script:
+  - mvn test
 
 jdk:
   - oraclejdk7
