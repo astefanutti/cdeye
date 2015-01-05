@@ -13,12 +13,9 @@ xhr.send();
 function display() {
     var beans = JSON.parse(xhr.responseText);
 
-    var nodes = [];
-    var links = [];
-    var producerGroups = [];
-    var beanToNodeId = {};
-
     var i, j;
+    var beanToNodeId = {};
+    var nodes = [], links = [], groups = [];
 
     // First loop on the beans
     for (i = 0; i < beans.bean.length; i++) {
@@ -38,14 +35,14 @@ function display() {
         if (bean.producers) {
             var producers = bean.producers.producer;
             // TODO: find a way to have the declaring bean at the top of the group
-            var producerGroup = [i];
+            var leaves = [i];
             for (j = 0; j < producers.length; j++) {
                 var producer = beanToNodeId[producers[j].bean];
-                producerGroup.push(producer);
+                leaves.push(producer);
                 // Override the node with the producer member name
                 nodes[producer].name = producers[j].name;
             }
-            producerGroups.push(producerGroup);
+            groups.push({leaves: leaves});
         }
     }
 
@@ -93,7 +90,7 @@ function display() {
     var powerGraph = null;
     d3cola.nodes(nodes)
         .links(links)
-        //.groups(groups)
+        .groups(groups)
         .powerGraphGroups(function (d) {
             powerGraph = d;
             d.groups.forEach(function (v) {
@@ -209,8 +206,8 @@ function display() {
     }
 
     // Add groups for the producers and their declaring bean
-    for (i = 0; i < producerGroups.length; i++)
-        addProducerGroup(producerGroups[i]);
+    //for (i = 0; i < producerGroups.length; i++)
+    //    addProducerGroup(producerGroups[i]);
 
     var group = container.selectAll(".group")
         .data(d3cola.groups())

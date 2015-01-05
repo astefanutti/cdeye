@@ -2822,15 +2822,29 @@ var cola;
         })();
         powergraph.PowerEdge = PowerEdge;
 
+        function addModules(configuration, group) {
+            var moduleSet = new ModuleSet();
+            configuration.roots.push(moduleSet);
+            for (var i = 0; i < group.leaves.length; ++i) {
+                var node = group.leaves[i];
+                var module = new Module(node.id);
+                configuration.modules[node.id] = module;
+                moduleSet.add(module);
+            }
+            if (group.groups)
+                for (var j = 0; j < group.groups.length; ++j)
+                    addModules(configuration, group.groups[j]);
+        }
+
         var Configuration = (function () {
-            function Configuration(n, edges, linkAccessor) {
+            function Configuration(n, edges, rootGroup, linkAccessor) {
                 var _this = this;
                 this.linkAccessor = linkAccessor;
                 this.modules = new Array(n);
-                this.roots = new ModuleSet();
-                for (var i = 0; i < n; ++i) {
-                    this.roots.add(this.modules[i] = new Module(i));
-                }
+                this.roots = [];
+
+                addModules(this, rootGroup);
+
                 this.R = edges.length;
                 edges.forEach(function (e) {
                     var s = _this.modules[linkAccessor.getSourceIndex(e)], t = _this.modules[linkAccessor.getTargetIndex(e)], type = linkAccessor.getType(e);
@@ -2838,7 +2852,7 @@ var cola;
                     t.incoming.add(type, s);
                 });
             }
-            Configuration.prototype.merge = function (a, b) {
+            Configuration.prototype.merge = function (k, a, b) {
                 var inInt = a.incoming.intersection(b.incoming), outInt = a.outgoing.intersection(b.outgoing);
                 var children = new ModuleSet();
                 children.add(a);
@@ -2860,14 +2874,14 @@ var cola;
                 update(outInt, "incoming", "outgoing");
                 update(inInt, "outgoing", "incoming");
                 this.R -= inInt.count() + outInt.count();
-                this.roots.remove(a);
-                this.roots.remove(b);
-                this.roots.add(m);
+                this.roots[k].remove(a);
+                this.roots[k].remove(b);
+                this.roots[k].add(m);
                 return m;
             };
 
-            Configuration.prototype.rootMerges = function () {
-                var rs = this.roots.modules();
+            Configuration.prototype.rootMerges = function (k) {
+                var rs = this.roots[k].modules();
                 var n = rs.length;
                 var merges = new Array(n * (n - 1));
                 var ctr = 0;
@@ -2881,14 +2895,17 @@ var cola;
             };
 
             Configuration.prototype.greedyMerge = function () {
-                var ms = this.rootMerges().sort(function (a, b) {
-                    return a.nEdges - b.nEdges;
-                });
-                var m = ms[0];
-                if (m.nEdges >= this.R)
-                    return false;
-                this.merge(m.a, m.b);
-                return true;
+                for (var i = 0; i < this.roots.length; ++i) {
+                    var ms = this.rootMerges(i).sort(function (a, b) {
+                        return a.nEdges - b.nEdges;
+                    });
+                    var m = ms[0];
+                    if (m.nEdges >= this.R)
+                        continue;
+                    this.merge(i, m.a, m.b);
+                    return true;
+                }
+                return false;
             };
 
             Configuration.prototype.nEdges = function (a, b) {
@@ -2900,7 +2917,12 @@ var cola;
                 var _this = this;
                 var groups = [];
                 var root = {};
-                toGroups(this.roots, root, groups);
+                toGroups(this.roots[0], root, groups);
+                for (var i = 1; i < this.roots.length; ++i) {
+                    var group = {id: groups.length};
+                    groups.push(group);
+                    toGroups(this.roots[i], group, groups);
+                }
                 var es = this.allEdges();
                 es.forEach(function (e) {
                     var a = _this.modules[e.source];
@@ -2912,7 +2934,8 @@ var cola;
 
             Configuration.prototype.allEdges = function () {
                 var es = [];
-                Configuration.getEdges(this.roots, es);
+                for (var i = 0; i < this.roots.length; ++i)
+                    Configuration.getEdges(this.roots[i], es);
                 return es;
             };
 
@@ -3086,8 +3109,8 @@ var cola;
             return Object.keys(intersection(m, n)).length;
         }
 
-        function getGroups(nodes, links, la) {
-            var n = nodes.length, c = new powergraph.Configuration(n, links, la);
+        function getGroups(nodes, links, rootGroup, la) {
+            var n = nodes.length, c = new powergraph.Configuration(n, links, rootGroup, la);
             while (c.greedyMerge())
                 ;
             var powerEdges = [];
@@ -3293,7 +3316,7 @@ var cola;
         };
 
         adaptor.powerGraphGroups = function (f) {
-            var g = cola.powergraph.getGroups(nodes, links, linkAccessor);
+            var g = cola.powergraph.getGroups(nodes, links, rootGroup, linkAccessor);
             this.groups(g.groups);
             f(g);
             return adaptor;
