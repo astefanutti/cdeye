@@ -99,8 +99,7 @@ function display() {
         });
 
     var group = container.selectAll(".group")
-        .data(d3cola.groups())
-        //.data(powerGraph.groups)
+        .data(powerGraph.groups)
         .enter().append("rect")
         .attr("rx", 8).attr("ry", 8)
         .attr("class", "group")
