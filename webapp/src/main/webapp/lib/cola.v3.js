@@ -2896,6 +2896,8 @@ var cola;
 
             Configuration.prototype.greedyMerge = function () {
                 for (var i = 0; i < this.roots.length; ++i) {
+                    if (this.roots[i].modules().length < 2)
+                        continue;
                     var ms = this.rootMerges(i).sort(function (a, b) {
                         return a.nEdges - b.nEdges;
                     });
