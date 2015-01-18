@@ -15,14 +15,14 @@ function display() {
 
     var i, j;
     var beanToNodeId = {};
-    var nodes = [], links = [], groups = [];
+    var nodes = [], links = [], groups = [], constraints = [];
 
     // First loop on the beans
     for (i = 0; i < beans.bean.length; i++) {
         var bean = beans.bean[i];
         beanToNodeId[bean.id] = i;
         // TODO: the id should be the original id, not the index, though that is required for edge routing
-        nodes[i] = {id: i, name: bean.classSimpleName, width: 200, height: 40};
+        nodes[i] = {id: i, index: i, name: bean.classSimpleName, width: 200, height: 40};
     }
     // Second loop on the beans graph
     for (i = 0; i < beans.bean.length; i++) {
@@ -34,25 +34,27 @@ function display() {
         }
         if (bean.producers) {
             var producers = bean.producers.producer;
-            // TODO: find a way to have the declaring bean at the top of the group
             var leaves = [i];
+            var offsets = [{node: i, offset: 0}];
             for (j = 0; j < producers.length; j++) {
                 var producer = beanToNodeId[producers[j].bean];
                 leaves.push(producer);
                 // Override the node with the producer member name
                 nodes[producer].name = producers[j].name;
+                // FIXME: separation constraint isn't enough to have the declaring bean at the top of the group
+                constraints.push({type: "separation", axis: "y", left: i, right: producer, gap: 0, equality: false});
+                offsets.push({node: producer, offset: 0});
             }
+            constraints.push({type: "alignment", axis: "x", offsets: offsets});
             groups.push({leaves: leaves});
         }
     }
 
     var d3cola = cola.d3adaptor()
-        .linkDistance(100)
+        //.linkDistance(100)
         .avoidOverlaps(true)
         .handleDisconnected(true)
         .convergenceThreshold(0.01)
-        //.symmetricDiffLinkLengths(1)
-        .jaccardLinkLengths(100)
         .size([window.innerWidth, window.innerHeight]);
 
     var svg = d3.select("body").append("svg")
@@ -96,10 +98,14 @@ function display() {
             d.groups.forEach(function (v) {
                 return v.padding = 10;
             });
-        });
+        })
+        .constraints(constraints)
+        //.symmetricDiffLinkLengths(10)
+        .jaccardLinkLengths(150, 1);
 
     var group = container.selectAll(".group")
         .data(powerGraph.groups)
+        //.data(d3cola.groups())
         .enter().append("rect")
         .attr("rx", 8).attr("ry", 8)
         .attr("class", "group")
@@ -107,6 +113,7 @@ function display() {
 
     var link = container.selectAll(".link")
         .data(powerGraph.powerEdges)
+        //.data(d3cola.links())
         .enter().append("path")
         .attr("class", "link");
 
@@ -172,7 +179,7 @@ function display() {
         .y(function (d) { return d.y; })
         .interpolate("basis");
 
-    d3cola.start();
+    d3cola.start(10, 10, 10);
 
     function update() {
         node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
