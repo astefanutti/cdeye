@@ -1,0 +1,567 @@
+{
+
+      "bean" : [ {
+         "id" : "0",
+         "className" : "murex.connectivity.vit.core.bean.TransformerBean",
+         "classSimpleName" : "TransformerBean",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "37"
+            } ]
+         }
+      }, {
+         "id" : "3",
+         "className" : "murex.connectivity.vit.core.bean.RetryExceptionBean",
+         "classSimpleName" : "RetryExceptionBean"
+      }, {
+         "id" : "4",
+         "className" : "murex.connectivity.core.exception.ExceptionCatalogProducer",
+         "classSimpleName" : "ExceptionCatalogProducer"
+      }, {
+         "id" : "5",
+         "className" : "murex.connectivity.core.cdi.camel.CdiPropertiesComponent",
+         "classSimpleName" : "CdiPropertiesComponent"
+      }, {
+         "id" : "6",
+         "className" : "murex.connectivity.core.cdi.configuration.ConfigPropertyBeanFactory",
+         "classSimpleName" : "ConfigPropertyBeanFactory"
+      }, {
+         "id" : "7",
+         "className" : "murex.connectivity.vit.core.bean.VitMonitoringBean",
+         "classSimpleName" : "VitMonitoringBean"
+      }, {
+         "id" : "9",
+         "className" : "murex.connectivity.vit.core.bean.VitMonitoringBean",
+         "classSimpleName" : "VitMonitoringBean",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "25"
+            } ]
+         },
+         "producers" : {
+            "producer" : [ {
+               "name" : "MUREX_CONTRACT_IDS_FIELD",
+               "bean" : "7"
+            } ]
+         }
+      }, {
+         "id" : "11",
+         "className" : "murex.connectivity.core.cdi.state.StateEvictionManager",
+         "classSimpleName" : "StateEvictionManager",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "22"
+            }, {
+               "bean" : "71"
+            } ]
+         }
+      }, {
+         "id" : "14",
+         "className" : "murex.connectivity.sdd.transformation.StandaloneDataDictionaryFactory",
+         "classSimpleName" : "StandaloneDataDictionaryFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "21"
+            }, {
+               "bean" : "5"
+            } ]
+         }
+      }, {
+         "id" : "15",
+         "className" : "murex.connectivity.core.cdi.camel.CdiCamelFactory",
+         "classSimpleName" : "CdiCamelFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "createTypeConverter",
+               "bean" : "21"
+            }, {
+               "name" : "createMockEndpoint",
+               "bean" : "30"
+            }, {
+               "name" : "createProducerTemplate",
+               "bean" : "53"
+            }, {
+               "name" : "createEndpoint",
+               "bean" : "61"
+            } ]
+         }
+      }, {
+         "id" : "16",
+         "className" : "murex.connectivity.mx.bo.SmcBusinessObjectServiceFactory",
+         "classSimpleName" : "SmcBusinessObjectServiceFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "injectBusinessObjectService",
+               "bean" : "70"
+            } ]
+         }
+      }, {
+         "id" : "17",
+         "className" : "murex.connectivity.core.cdi.state.StateExtension",
+         "classSimpleName" : "StateExtension"
+      }, {
+         "id" : "19",
+         "className" : "murex.connectivity.vit.core.bean.OspExceptionBean",
+         "classSimpleName" : "OspExceptionBean",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "4"
+            }, {
+               "bean" : "71"
+            } ]
+         }
+      }, {
+         "id" : "20",
+         "className" : "murex.connectivity.mx.datasource.MurexDataSourceFactory",
+         "classSimpleName" : "MurexDataSourceFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "76"
+            }, {
+               "bean" : "75"
+            }, {
+               "bean" : "5"
+            } ]
+         }
+      }, {
+         "id" : "21",
+         "className" : "murex.connectivity.core.cdi.camel.CdiCamelFactory",
+         "classSimpleName" : "CdiCamelFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "55"
+            } ]
+         }
+      }, {
+         "id" : "22",
+         "className" : "murex.connectivity.core.cdi.state.SqlDialectFactory",
+         "classSimpleName" : "SqlDialectFactory"
+      }, {
+         "id" : "23",
+         "className" : "murex.connectivity.core.cdi.state.StateMapProducer",
+         "classSimpleName" : "StateMapProducer",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "71"
+            }, {
+               "bean" : "11"
+            }, {
+               "bean" : "22"
+            }, {
+               "bean" : "21"
+            } ]
+         },
+         "producers" : {
+            "producer" : [ {
+               "name" : "produceStateMap",
+               "bean" : "51"
+            } ]
+         }
+      }, {
+         "id" : "24",
+         "className" : "murex.connectivity.core.cdi.configuration.ConfigPropertyBeanFactory",
+         "classSimpleName" : "ConfigPropertyBeanFactory"
+      }, {
+         "id" : "25",
+         "className" : "murex.connectivity.core.cdi.mx.TradeRepositoryAnswerFactory",
+         "classSimpleName" : "TradeRepositoryAnswerFactory"
+      }, {
+         "id" : "26",
+         "className" : "murex.connectivity.core.cdi.configuration.ConfigPropertyBeanFactory",
+         "classSimpleName" : "ConfigPropertyBeanFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "produceFloatConfiguration",
+               "bean" : "6"
+            }, {
+               "name" : "produceBooleanConfiguration",
+               "bean" : "24"
+            }, {
+               "name" : "produceIntegerConfiguration",
+               "bean" : "39"
+            }, {
+               "name" : "produceLongConfiguration",
+               "bean" : "54"
+            }, {
+               "name" : "produceStringConfiguration",
+               "bean" : "62"
+            } ]
+         }
+      }, {
+         "id" : "28",
+         "className" : "murex.connectivity.mx.datasource.MurexDataSourceFactory",
+         "classSimpleName" : "MurexDataSourceFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "75"
+            }, {
+               "bean" : "5"
+            } ]
+         }
+      }, {
+         "id" : "29",
+         "className" : "murex.connectivity.mx.datasource.MurexDataSourceFactory",
+         "classSimpleName" : "MurexDataSourceFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "75"
+            } ]
+         },
+         "producers" : {
+            "producer" : [ {
+               "name" : "produceMurexDataSource",
+               "bean" : "20"
+            }, {
+               "name" : "produceDatabaseType",
+               "bean" : "28"
+            } ]
+         }
+      }, {
+         "id" : "30",
+         "className" : "murex.connectivity.core.cdi.camel.CdiCamelFactory",
+         "classSimpleName" : "CdiCamelFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "55"
+            } ]
+         }
+      }, {
+         "id" : "31",
+         "className" : "murex.connectivity.vit.core.jms.JmsComponentFactory",
+         "classSimpleName" : "JmsComponentFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "62"
+            } ]
+         }
+      }, {
+         "id" : "32",
+         "className" : "murex.connectivity.core.cdi.mx.TradeRepositoryAnswerFactory",
+         "classSimpleName" : "TradeRepositoryAnswerFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "expression",
+               "bean" : "25"
+            }, {
+               "name" : "processor",
+               "bean" : "47"
+            }, {
+               "name" : "predicate",
+               "bean" : "69"
+            } ]
+         }
+      }, {
+         "id" : "33",
+         "className" : "murex.connectivity.mx.mapping.DataDictionaryMapperFactory",
+         "classSimpleName" : "DataDictionaryMapperFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "produceMapper",
+               "bean" : "48"
+            } ]
+         }
+      }, {
+         "id" : "34",
+         "className" : "murex.connectivity.vit.core.transformation.TransformerFactory",
+         "classSimpleName" : "TransformerFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "transformer",
+               "bean" : "37"
+            } ]
+         }
+      }, {
+         "id" : "35",
+         "className" : "murex.connectivity.vit.core.jms.JmsComponentFactory",
+         "classSimpleName" : "JmsComponentFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "62"
+            } ]
+         }
+      }, {
+         "id" : "36",
+         "className" : "murex.connectivity.vit.core.jms.JmsComponentFactory",
+         "classSimpleName" : "JmsComponentFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "produceInputJmsComponent",
+               "bean" : "31"
+            }, {
+               "name" : "produceActionJmsComponent",
+               "bean" : "35"
+            }, {
+               "name" : "produceRetryJmsComponent",
+               "bean" : "41"
+            } ]
+         }
+      }, {
+         "id" : "37",
+         "className" : "murex.connectivity.vit.core.transformation.TransformerFactory",
+         "classSimpleName" : "TransformerFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "62"
+            } ]
+         }
+      }, {
+         "id" : "39",
+         "className" : "murex.connectivity.core.cdi.configuration.ConfigPropertyBeanFactory",
+         "classSimpleName" : "ConfigPropertyBeanFactory"
+      }, {
+         "id" : "40",
+         "className" : "murex.connectivity.vit.core.transaction.JtaTransactionManagerFactory",
+         "classSimpleName" : "JtaTransactionManagerFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "76"
+            } ]
+         }
+      }, {
+         "id" : "41",
+         "className" : "murex.connectivity.vit.core.jms.JmsComponentFactory",
+         "classSimpleName" : "JmsComponentFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "62"
+            } ]
+         }
+      }, {
+         "id" : "42",
+         "className" : "murex.connectivity.mx.mapping.DataDictionaryServiceFactory",
+         "classSimpleName" : "DataDictionaryServiceFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "produceDataDictionaryService",
+               "bean" : "68"
+            } ]
+         }
+      }, {
+         "id" : "44",
+         "className" : "murex.connectivity.core.exception.ExceptionCatalogProducer",
+         "classSimpleName" : "ExceptionCatalogProducer"
+      }, {
+         "id" : "45",
+         "className" : "murex.connectivity.sdd.transformation.StandaloneDataDictionaryExtension",
+         "classSimpleName" : "StandaloneDataDictionaryExtension"
+      }, {
+         "id" : "46",
+         "className" : "murex.connectivity.vit.core.bean.ImportExceptionBean",
+         "classSimpleName" : "ImportExceptionBean",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "4"
+            } ]
+         }
+      }, {
+         "id" : "47",
+         "className" : "murex.connectivity.core.cdi.mx.TradeRepositoryAnswerFactory",
+         "classSimpleName" : "TradeRepositoryAnswerFactory"
+      }, {
+         "id" : "48",
+         "className" : "murex.connectivity.mx.mapping.DataDictionaryMapperFactory",
+         "classSimpleName" : "DataDictionaryMapperFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "72"
+            }, {
+               "bean" : "5"
+            }, {
+               "bean" : "44"
+            }, {
+               "bean" : "21"
+            } ]
+         }
+      }, {
+         "id" : "50",
+         "className" : "murex.connectivity.sdd.transformation.StandaloneDataDictionaryFactory",
+         "classSimpleName" : "StandaloneDataDictionaryFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "45"
+            }, {
+               "bean" : "5"
+            }, {
+               "bean" : "44"
+            } ]
+         },
+         "producers" : {
+            "producer" : [ {
+               "name" : "createTransformer",
+               "bean" : "14"
+            } ]
+         }
+      }, {
+         "id" : "51",
+         "className" : "murex.connectivity.core.cdi.state.StateMapProducer",
+         "classSimpleName" : "StateMapProducer",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "17"
+            } ]
+         }
+      }, {
+         "id" : "52",
+         "className" : "murex.connectivity.vit.core.bean.MdcLoggingBean",
+         "classSimpleName" : "MdcLoggingBean"
+      }, {
+         "id" : "53",
+         "className" : "murex.connectivity.core.cdi.camel.CdiCamelFactory",
+         "classSimpleName" : "CdiCamelFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "55"
+            } ]
+         }
+      }, {
+         "id" : "54",
+         "className" : "murex.connectivity.core.cdi.configuration.ConfigPropertyBeanFactory",
+         "classSimpleName" : "ConfigPropertyBeanFactory"
+      }, {
+         "id" : "55",
+         "className" : "murex.connectivity.core.cdi.camel.CdiCamelContext",
+         "classSimpleName" : "CdiCamelContext"
+      }, {
+         "id" : "56",
+         "className" : "murex.connectivity.vit.core.management.VitSessionManagementMetrics",
+         "classSimpleName" : "VitSessionManagementMetrics",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "53"
+            }, {
+               "bean" : "60"
+            }, {
+               "bean" : "78"
+            } ]
+         }
+      }, {
+         "id" : "58",
+         "className" : "murex.connectivity.vit.core.VitManagedInterface",
+         "classSimpleName" : "VitManagedInterface",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "67"
+            }, {
+               "bean" : "19"
+            }, {
+               "bean" : "47"
+            }, {
+               "bean" : "3"
+            }, {
+               "bean" : "46"
+            }, {
+               "bean" : "0"
+            }, {
+               "bean" : "69"
+            }, {
+               "bean" : "52"
+            } ]
+         }
+      }, {
+         "id" : "59",
+         "className" : "murex.connectivity.core.exception.ExceptionCatalogProducer",
+         "classSimpleName" : "ExceptionCatalogProducer",
+         "producers" : {
+            "producer" : [ {
+               "name" : "applicationExceptionCatalog",
+               "bean" : "4"
+            }, {
+               "name" : "frameworkExceptionCatalog",
+               "bean" : "44"
+            } ]
+         }
+      }, {
+         "id" : "60",
+         "className" : "murex.connectivity.vit.core.management.VitMetricsAggregator",
+         "classSimpleName" : "VitMetricsAggregator"
+      }, {
+         "id" : "61",
+         "className" : "murex.connectivity.core.cdi.camel.CdiCamelFactory",
+         "classSimpleName" : "CdiCamelFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "55"
+            } ]
+         }
+      }, {
+         "id" : "62",
+         "className" : "murex.connectivity.core.cdi.configuration.ConfigPropertyBeanFactory",
+         "classSimpleName" : "ConfigPropertyBeanFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "5"
+            } ]
+         }
+      }, {
+         "id" : "63",
+         "className" : "murex.connectivity.core.cdi.state.SqlDialectFactory",
+         "classSimpleName" : "SqlDialectFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "createSqlDialect",
+               "bean" : "22"
+            } ]
+         }
+      }, {
+         "id" : "64",
+         "className" : "murex.connectivity.vit.core.transaction.JtaTransactionManagerFactory",
+         "classSimpleName" : "JtaTransactionManagerFactory",
+         "producers" : {
+            "producer" : [ {
+               "name" : "createTransactionManager",
+               "bean" : "40"
+            } ]
+         }
+      }, {
+         "id" : "67",
+         "className" : "murex.connectivity.vit.core.bean.OspResponseBean",
+         "classSimpleName" : "OspResponseBean"
+      }, {
+         "id" : "68",
+         "className" : "murex.connectivity.mx.mapping.DataDictionaryServiceFactory",
+         "classSimpleName" : "DataDictionaryServiceFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "72"
+            }, {
+               "bean" : "44"
+            }, {
+               "bean" : "21"
+            } ]
+         }
+      }, {
+         "id" : "69",
+         "className" : "murex.connectivity.core.cdi.mx.TradeRepositoryAnswerFactory",
+         "classSimpleName" : "TradeRepositoryAnswerFactory"
+      }, {
+         "id" : "70",
+         "className" : "murex.connectivity.mx.bo.SmcBusinessObjectServiceFactory",
+         "classSimpleName" : "SmcBusinessObjectServiceFactory",
+         "injectionPoints" : {
+            "injectionPoint" : [ {
+               "bean" : "55"
+            } ]
+         }
+      }, {
+         "id" : "71",
+         "className" : "murex.connectivity.container.WeldManagedInterfaceContext",
+         "classSimpleName" : "WeldManagedInterfaceContext"
+      }, {
+         "id" : "72",
+         "className" : "murex.connectivity.core.mx.Mx3Version",
+         "classSimpleName" : "Mx3Version"
+      }, {
+         "id" : "75",
+         "className" : "murex.connectivity.mx.runtime.FileServerResourceLoader",
+         "classSimpleName" : "FileServerResourceLoader"
+      }, {
+         "id" : "76",
+         "className" : "murex.sdk.transaction.MurexJtaTransactionManager",
+         "classSimpleName" : "MurexJtaTransactionManager"
+      }, {
+         "id" : "78",
+         "className" : "murex.connectivity.core.common.client.ClientContext",
+         "classSimpleName" : "ClientContext"
+      } ]
+
+}

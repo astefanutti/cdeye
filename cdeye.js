@@ -24,18 +24,16 @@ function getQueryVariable(variable) {
 function display() {
     var beans = JSON.parse(xhr.responseText);
 
-    var nodes = [];
-    var links = [];
-    var producerGroups = [];
-    var beanToNodeId = {};
-
     var i, j;
+    var beanToNodeId = {};
+    var nodes = [], links = [], groups = [], constraints = [];
 
     // First loop on the beans
     for (i = 0; i < beans.bean.length; i++) {
         var bean = beans.bean[i];
         beanToNodeId[bean.id] = i;
-        nodes[i] = {id: i, name: bean.classSimpleName, width: 200, height: 40};
+        // TODO: the id should be the original id, not the index, though that is required for edge routing
+        nodes[i] = {id: i, index: i, name: bean.classSimpleName, width: 200, height: 40};
     }
     // Second loop on the beans graph
     for (i = 0; i < beans.bean.length; i++) {
@@ -47,26 +45,21 @@ function display() {
         }
         if (bean.producers) {
             var producers = bean.producers.producer;
-            // TODO: find a way to have the declaring bean at the top of the group
-            var producerGroup = [i];
+            var leaves = [i];
+            var offsets = [{node: i, offset: 0}];
             for (j = 0; j < producers.length; j++) {
                 var producer = beanToNodeId[producers[j].bean];
-                producerGroup.push(producer);
+                leaves.push(producer);
                 // Override the node with the producer member name
                 nodes[producer].name = producers[j].name;
+                // FIXME: separation constraint isn't enough to have the declaring bean at the top of the group
+                constraints.push({type: "separation", axis: "y", left: i, right: producer, gap: 0, equality: false});
+                offsets.push({node: producer, offset: 0});
             }
-            producerGroups.push(producerGroup);
+            constraints.push({type: "alignment", axis: "x", offsets: offsets});
+            groups.push({leaves: leaves});
         }
     }
-
-    var d3cola = cola.d3adaptor()
-        .linkDistance(100)
-        .avoidOverlaps(true)
-        .handleDisconnected(true)
-        .convergenceThreshold(0.01)
-        .symmetricDiffLinkLengths(10, 0.5)
-        .jaccardLinkLengths(100)
-        .size([window.innerWidth, window.innerHeight]);
 
     var svg = d3.select("body").append("svg")
         .attr("width", "100%")
@@ -101,59 +94,29 @@ function display() {
     var color = d3.scale.category20();
 
     var powerGraph = null;
-    d3cola.nodes(nodes)
+    var d3cola = cola.d3adaptor()
+        //.linkDistance(100)
+        .avoidOverlaps(true)
+        .handleDisconnected(true)
+        .convergenceThreshold(0.0001)
+        .size([window.innerWidth, window.innerHeight])
+        .nodes(nodes)
         .links(links)
-        //.groups(groups)
+        .groups(groups)
         .powerGraphGroups(function (d) {
             powerGraph = d;
             d.groups.forEach(function (v) {
                 return v.padding = 10;
             });
-        });
-
-    function addGroup(id, nodeIds) {
-        var idx;
-        var parents = {};
-        var leaves = [], offsets = [], groups = [];
-        for (var k = 0; k < nodeIds.length; k++) {
-            var node = nodes[nodeIds[k]];
-            if (node.parent) {
-                // TODO: handle second level group nesting
-                parents[node.parent.id] = node.parent;
-            } else {
-                leaves.push(node);
-                idx = d3cola.rootGroup().leaves.indexOf(node);
-                d3cola.rootGroup().leaves.splice(idx, 1);
-            }
-            offsets.push({node: nodeIds[k], offset: 0});
-        }
-
-        var grp = {id: id, padding: 10, leaves: leaves, groups: groups};
-        grp.leaves.forEach(function (v) {
-            if (!v.parent)
-                v.parent = grp;
-        });
-
-        for (var groupId in parents) {
-            groups.push(parents[groupId]);
-            idx = d3cola.rootGroup().groups.indexOf(parents[groupId]);
-            d3cola.rootGroup().groups.splice(idx, 1);
-        }
-
-        d3cola.groups().push(grp);
-        d3cola.rootGroup().groups.push(grp);
-
-        d3cola.constraints().push({type: "alignment", axis: "x", offsets: offsets});
-    }
-
-    // Add groups for the producers and their declaring bean
-    var rid = d3cola.rootGroup().groups.length - 1;
-    for (i = 0; i < producerGroups.length; i++)
-        addGroup(rid, producerGroups[i]);
+        })
+        .constraints(constraints)
+        .symmetricDiffLinkLengths(20, 8)
+        //.jaccardLinkLengths(400, 0.5)
+        ;
 
     var group = container.selectAll(".group")
-        .data(d3cola.groups())
-        //.data(powerGraph.groups)
+        .data(powerGraph.groups)
+        //.data(d3cola.groups())
         .enter().append("rect")
         .attr("rx", 8).attr("ry", 8)
         .attr("class", "group")
@@ -161,6 +124,7 @@ function display() {
 
     var link = container.selectAll(".link")
         .data(powerGraph.powerEdges)
+        //.data(d3cola.links())
         .enter().append("path")
         .attr("class", "link");
 
@@ -200,14 +164,34 @@ function display() {
             d.height = b.height + extra;
         });
 
-    d3cola.on("tick", function () {
-        update();
+    var iteration = 0,
+        collapse = 0;
+
+    d3cola.on("tick", function (event) {
+        if (event.stress < 1)
+            return d3cola.stop();
+        iteration++;
+        update(event);
         if (updateViewBox)
             viewBox();
-    }).on("end", function () {
-        routeEdges();
-        d3cola.on("tick", update);
-        d3cola.on("end", routeEdges);
+    }).on("end", function (event) {
+        if (event.stress > 0.01 && collapse < 10) {
+            collapse++;
+            var D = d3cola.descent().D;
+            for (var i = 0; i < D.length; i++)
+                for (var j = 0; j < D[i].length; j++)
+                    D[i][j] *= 0.9;
+            d3cola.convergenceThreshold(0.01);
+            d3cola.resume();
+        } else {
+            routeEdges();
+            d3cola.on("tick", function (event) {
+                if (event.stress < 1)
+                    return d3cola.stop();
+                update(event);
+            });
+            d3cola.on("end", routeEdges);
+        }
     });
 
     function routeEdges() {
@@ -226,9 +210,9 @@ function display() {
         .y(function (d) { return d.y; })
         .interpolate("basis");
 
-    d3cola.start();
+    d3cola.start(50, 50, 50);
 
-    function update() {
+    function update(event) {
         node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
             .attr("x", function (d) { return d.innerBounds.x; })
             .attr("y", function (d) { return d.innerBounds.y; })
