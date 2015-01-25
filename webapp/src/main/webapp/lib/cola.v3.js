@@ -1641,8 +1641,8 @@ var cola;
                     computeGroupBounds(rootGroup);
                     var i = nodes.length;
                     groups.forEach(function (g) {
-                        _this.variables[i] = g.minVar = new IndexedVariable(i++, 0.01);
-                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, 0.01);
+                        _this.variables[i] = g.minVar = new IndexedVariable(i++, 0.5);
+                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, 0.5);
                     });
                 }
             }
@@ -3226,9 +3226,9 @@ var cola;
 
         adaptor.tick = function () {
             if (alpha < threshold) {
-                trigger({ type: "end", alpha: alpha = 0 });
-                delete lastStress;
                 running = false;
+                trigger({ type: "end", alpha: alpha = 0, stress: lastStress });
+                delete lastStress;
                 return true;
             }
 
@@ -3269,7 +3269,7 @@ var cola;
                 }
             }
 
-            trigger({ type: "tick", alpha: alpha });
+            trigger({ type: "tick", alpha: alpha, stress: lastStress });
         };
 
         /**
@@ -3486,6 +3486,10 @@ var cola;
             this.linkDistance(function (l) { return idealLength * l.length });
             return adaptor;
         }
+
+        adaptor.descent = function() {
+            return descent;
+        };
 
         /**
          * start the layout process

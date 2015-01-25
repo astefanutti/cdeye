@@ -50,12 +50,9 @@ function display() {
         }
     }
 
-    var d3cola = cola.d3adaptor()
-        //.linkDistance(100)
-        .avoidOverlaps(true)
-        .handleDisconnected(true)
-        .convergenceThreshold(0.01)
-        .size([window.innerWidth, window.innerHeight]);
+    var debug = d3.select("body")
+        .append("div")
+        .attr("class", "debug");
 
     var svg = d3.select("body").append("svg")
         .attr("width", "100%")
@@ -90,7 +87,13 @@ function display() {
     var color = d3.scale.category20();
 
     var powerGraph = null;
-    d3cola.nodes(nodes)
+    var d3cola = cola.d3adaptor()
+        //.linkDistance(100)
+        .avoidOverlaps(true)
+        .handleDisconnected(true)
+        .convergenceThreshold(0.0001)
+        .size([window.innerWidth, window.innerHeight])
+        .nodes(nodes)
         .links(links)
         .groups(groups)
         .powerGraphGroups(function (d) {
@@ -100,8 +103,9 @@ function display() {
             });
         })
         .constraints(constraints)
-        //.symmetricDiffLinkLengths(10)
-        .jaccardLinkLengths(150, 1);
+        .symmetricDiffLinkLengths(20, 8)
+        //.jaccardLinkLengths(400, 0.5)
+        ;
 
     var group = container.selectAll(".group")
         .data(powerGraph.groups)
@@ -116,6 +120,17 @@ function display() {
         //.data(d3cola.links())
         .enter().append("path")
         .attr("class", "link");
+
+    //var dist = container.selectAll(".dist")
+    //    .data(d3cola.links())
+    //    .enter().append("path")
+    //    .attr("class", "dist");
+
+    //dist.each(function (d) { this.computedLength = 100 * d.length; });
+    //var length = container.selectAll(".length")
+    //    .data(dist[0])
+    //    .enter().append("text")
+    //    .attr("class", "length");
 
     var margin = 10, pad = 12;
 
@@ -153,14 +168,34 @@ function display() {
             d.height = b.height + extra;
         });
 
-    d3cola.on("tick", function () {
-        update();
+    var iteration = 0,
+        collapse = 0;
+
+    d3cola.on("tick", function (event) {
+        if (event.stress < 1)
+            return d3cola.stop();
+        iteration++;
+        update(event);
         if (updateViewBox)
             viewBox();
-    }).on("end", function () {
-        routeEdges();
-        d3cola.on("tick", update);
-        d3cola.on("end", routeEdges);
+    }).on("end", function (event) {
+        if (event.stress > 0.01 && collapse < 10) {
+            collapse++;
+            var D = d3cola.descent().D;
+            for (var i = 0; i < D.length; i++)
+                for (var j = 0; j < D[i].length; j++)
+                    D[i][j] *= 0.9;
+            d3cola.convergenceThreshold(0.01);
+            d3cola.resume();
+        } else {
+            routeEdges();
+            d3cola.on("tick", function (event) {
+                if (event.stress < 1)
+                    return d3cola.stop();
+                update(event);
+            });
+            d3cola.on("end", routeEdges);
+        }
     });
 
     function routeEdges() {
@@ -172,6 +207,11 @@ function display() {
             else
                 return lineFunction(d3cola.routeEdge(d));
         });
+
+        //length.each(function (d) { d.l = d.getTotalLength(); d.p = d.getPointAtLength(d.l / 2); })
+        //    .attr("x", function (d) { return d.p.x; })
+        //    .attr("y", function (d) { return d.p.y; })
+        //    .text(function (d) { return Math.floor(d.l) + "(" + Math.floor(d.computedLength) + ")"} );
     }
 
     var lineFunction = d3.svg.line()
@@ -179,9 +219,15 @@ function display() {
         .y(function (d) { return d.y; })
         .interpolate("basis");
 
-    d3cola.start(10, 10, 10);
+    d3cola.start(50, 50, 50);
 
-    function update() {
+    function update(event) {
+        debug.html("iteration:" + iteration +
+            "<br/> collapse:" + collapse +
+            "<br/> alpha:" + d3.format(".2r")(event.alpha) +
+            "<br/> stress:" + d3.format(".2r")(event.stress)
+        );
+
         node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
             .attr("x", function (d) { return d.innerBounds.x; })
             .attr("y", function (d) { return d.innerBounds.y; })
@@ -201,6 +247,16 @@ function display() {
 
         label.attr("x", function (d) { return d.x; })
             .attr("y", function (d) { return d.y + this.getBBox().height / 3.5; });
+
+        //dist.attr("d", function (d) {
+        //    cola.vpsc.makeEdgeBetween(d, d.source.innerBounds, d.target.innerBounds, 5);
+        //    return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
+        //});
+
+        //length.each(function (d) { d.l = d.getTotalLength(); d.p = d.getPointAtLength(d.l / 2); })
+        //    .attr("x", function (d) { return d.p.x; })
+        //    .attr("y", function (d) { return d.p.y; })
+        //    .text(function (d) { return Math.floor(d.l) + "(" + Math.floor(d.computedLength) + ")"} );
     }
 
     function viewBox() {
