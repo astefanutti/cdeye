@@ -1572,7 +1572,7 @@ var cola;
         vpsc.generateYConstraints = generateYConstraints;
 
         function generateXGroupConstraints(root) {
-            return generateGroupConstraints(root, xRect, 1e-6);
+            return generateGroupConstraints(root, xRect, 10);
         }
         vpsc.generateXGroupConstraints = generateXGroupConstraints;
 
@@ -1641,8 +1641,8 @@ var cola;
                     computeGroupBounds(rootGroup);
                     var i = nodes.length;
                     groups.forEach(function (g) {
-                        _this.variables[i] = g.minVar = new IndexedVariable(i++, 0.5);
-                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, 0.5);
+                        _this.variables[i] = g.minVar = new IndexedVariable(i++, 1);
+                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, 1);
                     });
                 }
             }
