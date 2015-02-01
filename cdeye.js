@@ -128,7 +128,7 @@ function display() {
         .enter().append("path")
         .attr("class", "link");
 
-    var margin = 10, pad = 12;
+    var margin = 15, pad = 10;
 
     var node = container.selectAll(".node")
         .data(nodes)
@@ -194,14 +194,156 @@ function display() {
         }
     });
 
+    function getId(v, n) {
+        return (typeof v.index === 'number' ? v.index : v.id + n) + 1;
+    }
+
     function routeEdges() {
-        d3cola.prepareEdgeRouting(0);
-        link.attr("d", function (d) {
-            // FIXME: edge routing does not work with power graph groups
-            if (!d.source.name || !d.target.name)
-                return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
-            else
-                return lineFunction(d3cola.routeEdge(d));
+        //d3cola.prepareEdgeRouting(0);
+        //link.attr("d", function (d) {
+        // FIXME: edge routing does not work with power graph groups
+        //    if (!d.source.name || !d.target.name)
+        //        return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
+        //    else
+        //        return lineFunction(d3cola.routeEdge(d));
+        //});
+
+        //length.each(function (d) { d.l = d.getTotalLength(); d.p = d.getPointAtLength(d.l / 2); })
+        //    .attr("x", function (d) { return d.p.x; })
+        //    .attr("y", function (d) { return d.p.y; })
+        //    .text(function (d) { return Math.floor(d.l) + "(" + Math.floor(d.computedLength) + ")"} );
+
+        var n = nodes.length, _id = function (v) {
+            return getId(v, n) - 1;
+        }, g = {
+            nodes: nodes.map(function (d) {
+                return {
+                    id: _id(d),
+                    name: d.name,
+                    //bounds: new cola.vpsc.Rectangle(d.x, d.x + d.width, d.y, d.y + d.height)
+                    bounds: d.innerBounds
+                };
+            }).concat(powerGraph.groups.map(function (d) {
+                return {
+                    id: _id(d),
+                    //innerBounds: d.innerBounds,
+                    children: (typeof d.groups !== 'undefined' ? d.groups.map(function (c) {
+                        return n + c.id;
+                    }) : []).concat(typeof d.leaves !== 'undefined' ? d.leaves.map(function (c) {
+                            return c.index;
+                        }) : [])
+                };
+            })),
+            edges: powerGraph.powerEdges.map(function (e) {
+                return {
+                    source: _id(e.source),
+                    target: _id(e.target),
+                    type: e.type
+                };
+            })
+        };
+        var gridrouter = new cola.GridRouter(g.nodes, {
+            getChildren: function (v) {
+                return v.children;
+            },
+            getBounds: function (v) {
+                return v.bounds;
+            }
+        }, 10);
+
+        //var gs = gridrouter.backToFront.filter(function (v) {
+        //    return !v.leaf;
+        //});
+
+        var routes = gridrouter.routeEdges(g.edges, 10, function (e) {
+            return e.source;
+        }, function (e) {
+            return e.target;
+        });
+
+        link.attr("d", function (e, j) {
+            var route = routes[j];
+            var id = 'e' + _id(e.source) + '-' + _id(e.target);
+            var cornerradius = 10;
+            var arrowwidth = 6;
+            var arrowheight = 12;
+            //var c = color(e.type);
+            var linewidth = 5;
+            var path = 'M ' + route[0][0].x + ' ' + route[0][0].y + ' ';
+            if (route.length > 1) {
+                for (var i = 0; i < route.length; i++) {
+                    var li = route[i];
+                    var x = li[1].x, y = li[1].y;
+                    var dx = x - li[0].x;
+                    var dy = y - li[0].y;
+                    if (i < route.length - 1) {
+                        if (Math.abs(dx) > 0) {
+                            x -= dx / Math.abs(dx) * cornerradius;
+                        } else {
+                            y -= dy / Math.abs(dy) * cornerradius;
+                        }
+                        path += 'L ' + x + ' ' + y + ' ';
+                        var l = route[i + 1];
+                        var x0 = l[0].x, y0 = l[0].y;
+                        var x1 = l[1].x;
+                        var y1 = l[1].y;
+                        dx = x1 - x0;
+                        dy = y1 - y0;
+                        var angle = cola.GridRouter.angleBetween2Lines(li, l) < 0 ? 1 : 0;
+                        //console.log(cola.GridRouter.angleBetween2Lines(li, l));
+                        var x2, y2;
+                        if (Math.abs(dx) > 0) {
+                            x2 = x0 + dx / Math.abs(dx) * cornerradius;
+                            y2 = y0;
+                        } else {
+                            x2 = x0;
+                            y2 = y0 + dy / Math.abs(dy) * cornerradius;
+                        }
+                        var cx = Math.abs(x2 - x);
+                        var cy = Math.abs(y2 - y);
+                        path += 'A ' + cx + ' ' + cy + ' 0 0 ' + angle + ' ' + x2 + ' ' + y2 + ' ';
+                    } else {
+                        var arrowtip = [x, y];
+                        var arrowcorner1, arrowcorner2;
+                        if (Math.abs(dx) > 0) {
+                            x -= dx / Math.abs(dx) * arrowheight;
+                            arrowcorner1 = [x, y + arrowwidth];
+                            arrowcorner2 = [x, y - arrowwidth];
+                        } else {
+                            y -= dy / Math.abs(dy) * arrowheight;
+                            arrowcorner1 = [x + arrowwidth, y];
+                            arrowcorner2 = [x - arrowwidth, y];
+                        }
+                        path += 'L ' + x + ' ' + y + ' ';
+                        //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + ' Z').attr('stroke', '#550000').attr('stroke-width', 2);
+                        //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1]).attr('stroke', 'none').attr('fill', c);
+                        path += 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + 'Z ';
+                    }
+                }
+            } else {
+                var li = route[0];
+                var x = li[1].x, y = li[1].y;
+                var dx = x - li[0].x;
+                var dy = y - li[0].y;
+                var arrowtip = [x, y];
+                var arrowcorner1, arrowcorner2;
+                if (Math.abs(dx) > 0) {
+                    x -= dx / Math.abs(dx) * arrowheight;
+                    arrowcorner1 = [x, y + arrowwidth];
+                    arrowcorner2 = [x, y - arrowwidth];
+                } else {
+                    y -= dy / Math.abs(dy) * arrowheight;
+                    arrowcorner1 = [x + arrowwidth, y];
+                    arrowcorner2 = [x - arrowwidth, y];
+                }
+                path += 'L ' + x + ' ' + y + ' ';
+                //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + ' Z').attr('stroke', '#550000').attr('stroke-width', 2);
+                //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1]).attr('stroke', 'none').attr('fill', c);
+                path += 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + 'Z ';
+            }
+            //svg.append('path').attr('d', path).attr('fill', 'none').attr('stroke', '#550000').attr('stroke-width', linewidth + 2);
+            //svg.append('path').attr('id', id).attr('d', path).attr('fill', 'none').attr('stroke', c).attr('stroke-width', linewidth);
+            return path;
         });
     }
 
