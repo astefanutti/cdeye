@@ -1572,7 +1572,7 @@ var cola;
         vpsc.generateYConstraints = generateYConstraints;
 
         function generateXGroupConstraints(root) {
-            return generateGroupConstraints(root, xRect, 10);
+            return generateGroupConstraints(root, xRect, 10.);
         }
         vpsc.generateXGroupConstraints = generateXGroupConstraints;
 
@@ -1641,8 +1641,8 @@ var cola;
                     computeGroupBounds(rootGroup);
                     var i = nodes.length;
                     groups.forEach(function (g) {
-                        _this.variables[i] = g.minVar = new IndexedVariable(i++, 1);
-                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, 1);
+                        _this.variables[i] = g.minVar = new IndexedVariable(i++, 0.01);
+                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, 0.01);
                     });
                 }
             }
@@ -2851,9 +2851,13 @@ var cola;
                     this.modules[node.id] = module;
                     moduleSet.add(module);
                 }
-                if (group.groups)
-                    for (var j = 0; j < group.groups.length; ++j)
-                        this.initModulesFromGroup(group.groups[j]);
+                if (group.groups) {
+                    for (var j = 0; j < group.groups.length; ++j) {
+                        var child = group.groups[j];
+                        moduleSet.add(new Module(-1-j, new LinkSets(), new LinkSets(), this.initModulesFromGroup(child), true));
+                    }
+                }
+                return moduleSet;
             };
 
             Configuration.prototype.merge = function (a, b, k) {
@@ -2925,11 +2929,11 @@ var cola;
                 var groups = [];
                 var root = {};
                 toGroups(this.roots[0], root, groups);
-                for (var i = 1; i < this.roots.length; ++i) {
+                /*for (var i = 1; i < this.roots.length; ++i) {
                     var group = { id: groups.length };
                     groups.push(group);
                     toGroups(this.roots[i], group, groups);
-                }
+                }*/
                 var es = this.allEdges();
                 es.forEach(function (e) {
                     var a = _this.modules[e.source];
@@ -2941,8 +2945,8 @@ var cola;
 
             Configuration.prototype.allEdges = function () {
                 var es = [];
-                for (var i = 0; i < this.roots.length; ++i)
-                    Configuration.getEdges(this.roots[i], es);
+                //for (var i = 0; i < this.roots.length; ++i)
+                Configuration.getEdges(this.roots[0], es);
                 return es;
             };
 
@@ -2965,7 +2969,7 @@ var cola;
                 } else {
                     var g = group;
                     m.gid = groups.length;
-                    if (!m.isIsland()) {
+                    if (!m.isIsland() || m.fixed) {
                         g = { id: m.gid };
                         if (!group.groups)
                             group.groups = [];
@@ -2978,14 +2982,16 @@ var cola;
         }
 
         var Module = (function () {
-            function Module(id, outgoing, incoming, children) {
+            function Module(id, outgoing, incoming, children, fixed) {
                 if (typeof outgoing === "undefined") { outgoing = new LinkSets(); }
                 if (typeof incoming === "undefined") { incoming = new LinkSets(); }
                 if (typeof children === "undefined") { children = new ModuleSet(); }
+                if (typeof fixed === "undefined") { fixed = false; }
                 this.id = id;
                 this.outgoing = outgoing;
                 this.incoming = incoming;
                 this.children = children;
+                this.fixed = fixed;
             }
             Module.prototype.getEdges = function (es) {
                 var _this = this;
@@ -3047,7 +3053,8 @@ var cola;
             ModuleSet.prototype.modules = function () {
                 var vs = [];
                 this.forAll(function (m) {
-                    return vs.push(m);
+                    if (!m.fixed)
+                        return vs.push(m);
                 });
                 return vs;
             };
