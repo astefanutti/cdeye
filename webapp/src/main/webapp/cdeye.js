@@ -1,30 +1,73 @@
-var xhr = new XMLHttpRequest();
-xhr.open("GET", "cdeye/beans");
-xhr.setRequestHeader("Accept", "application/json");
-xhr.onreadystatechange = function(event) {
-    if(xhr.readyState === 4)
-        if (xhr.status === 200)
-            display();
-        else
-            alert("CDEye not accessible!");
-};
-xhr.send();
+var request = { beans: "cdeye/beans" };
+if (getQueryVariable("modules") === "true")
+    request.modules = "cdeye/modules";
 
-function display() {
-    var beans = JSON.parse(xhr.responseText);
+cdEyeRequest(request, display);
+
+function cdEyeRequest(request, callback) {
+    var response = {};
+    var count = 0;
+    var total = Object.keys(request).length;
+    for (var url in request) {
+        var xhr = new XMLHttpRequest();
+        xhr.url = url;
+        xhr.open("GET", request[url]);
+        xhr.setRequestHeader("Accept", "application/json");
+        xhr.onreadystatechange = function () {
+            if (this.readyState === 4) {
+                if (this.status === 200) {
+                    response[this.url] = JSON.parse(this.responseText);
+                    if (++count == total)
+                        callback(response);
+                } else {
+                    alert("CDEye not accessible!");
+                }
+            }
+        };
+        xhr.send();
+    }
+}
+
+function getQueryVariable(variable) {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i = 0; i < vars.length; i++) {
+        var pair = vars[i].split("=");
+        if(pair[0] == variable)
+            return pair[1];
+    }
+    return null;
+}
+
+function display(cdEye) {
+    var beans = cdEye.beans;
+    var modules = cdEye.modules;
 
     var i, j;
-    var beanToNodeId = {};
+    var beanToNodeId = {}, beanToGroupId = {};
     var nodes = [], links = [], groups = [], constraints = [];
 
-    // First loop on the beans
+    if (modules) {
+        // Loop over the modules
+        for (i = 0; i < modules.module.length; i++) {
+            var module = modules.module[i];
+            groups.push({leaves: [], groups: []});
+            for (j = 0; j < module.beans.bean.length; j++)
+                beanToGroupId[module.beans.bean[j]] = groups.length - 1;
+        }
+    }
+
+    // Loop over the beans
     for (i = 0; i < beans.bean.length; i++) {
         var bean = beans.bean[i];
         beanToNodeId[bean.id] = i;
-        // TODO: the id should be the original id, not the index, though that is required for edge routing
+        // TODO: the id should be the original id, not the index, though that is required for edge routing (test if that is still required for metro line edge router)
         nodes[i] = {id: i, index: i, name: bean.classSimpleName, width: 200, height: 40};
+        if (modules && bean.id in beanToGroupId)
+            groups[beanToGroupId[bean.id]].leaves.push(i);
     }
-    // Second loop on the beans graph
+
+    // Loop over the beans graph
     for (i = 0; i < beans.bean.length; i++) {
         bean = beans.bean[i];
         if (bean.injectionPoints) {
@@ -32,13 +75,20 @@ function display() {
             for (j = 0; j < injectionPoints.length; j++)
                 links.push({source: beanToNodeId[injectionPoints[j].bean], target: i});
         }
+
         if (bean.producers) {
             var producers = bean.producers.producer;
             var leaves = [i];
+            var parent = (modules && bean.id in beanToGroupId) ? groups[beanToGroupId[bean.id]] : null;
+            if (parent)
+                parent.leaves.splice(parent.leaves.indexOf(i), 1);
             var offsets = [{node: i, offset: 0}];
             for (j = 0; j < producers.length; j++) {
                 var producer = beanToNodeId[producers[j].bean];
                 leaves.push(producer);
+                // Override the parent group is any
+                if (parent)
+                    parent.leaves.splice(parent.leaves.indexOf(producer), 1);
                 // Override the node with the producer member name
                 nodes[producer].name = producers[j].name;
                 // FIXME: separation constraint isn't enough to have the declaring bean at the top of the group
@@ -47,6 +97,8 @@ function display() {
             }
             constraints.push({type: "alignment", axis: "x", offsets: offsets});
             groups.push({leaves: leaves});
+            if (parent)
+                parent.groups.push(groups.length - 1);
         }
     }
 
@@ -59,7 +111,7 @@ function display() {
         .attr("height", "100%")
         .attr("preserveAspectRatio", "xMidYMid");
 
-    // define arrow markers for graph links
+    // Define arrow markers for graph links
     svg.append("svg:defs")
         .append("svg:marker")
         .attr("id", "end-arrow")
@@ -359,10 +411,10 @@ function display() {
     d3cola.start(50, 50, 50);
 
     function update(event) {
-        debug.html("iteration:" + iteration +
-            "<br/> collapse:" + collapse +
-            "<br/> alpha:" + d3.format(".2r")(event.alpha) +
-            "<br/> stress:" + d3.format(".2r")(event.stress)
+        debug.html("iteration:" + iteration + "<br/>" +
+            "collapse:" + collapse + "<br/>" +
+            "alpha:" + d3.format(".2r")(event.alpha) + "<br/>" +
+            "stress:" + d3.format(".2r")(event.stress)
         );
 
         node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })

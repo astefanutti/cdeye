@@ -90,7 +90,8 @@
                         <defaultsDescriptor>${basedir}/src/test/resources/webdefault.xml</defaultsDescriptor>
                     </webAppConfig>
                     <!-- Required for jetty:run-forked -->
-                    <!--jvmArgs>-Dlogback.configurationFile=file:///${basedir}/src/test/resources/logback-test.xml</jvmArgs-->
+                    <!--<jvmArgs>-Dlogback.configurationFile=file:///${basedir}/src/test/resources/logback-test.xml</jvmArgs>-->
+                    <!--<jvmArgs>-Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=y</jvmArgs>-->
                 </configuration>
                 <dependencies>
                     <dependency>

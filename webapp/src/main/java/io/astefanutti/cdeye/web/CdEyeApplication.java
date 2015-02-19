@@ -27,6 +27,7 @@ public class CdEyeApplication extends Application {
     public Set<Class<?>> getClasses() {
         Set<Class<?>> classes = new HashSet<>();
         classes.add(BeansResource.class);
+        classes.add(ModulesResource.class);
         return classes;
     }
 }

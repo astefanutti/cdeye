@@ -25,7 +25,6 @@ import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.Extension;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.enterprise.inject.spi.ProcessBean;
-import javax.xml.bind.JAXBException;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -105,7 +104,7 @@ public class CdEyeExtension implements Extension, CdEye {
             beans.put(pb.getBean(), pb.getAnnotated());
     }
 
-    private void afterDeploymentValidation(@Observes AfterDeploymentValidation adv, BeanManager manager) throws JAXBException {
+    private void afterDeploymentValidation(@Observes AfterDeploymentValidation adv, BeanManager manager) {
         this.manager = manager;
     }
 }
