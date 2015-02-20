@@ -1641,8 +1641,8 @@ var cola;
                     computeGroupBounds(rootGroup);
                     var i = nodes.length;
                     groups.forEach(function (g) {
-                        _this.variables[i] = g.minVar = new IndexedVariable(i++, 0.01);
-                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, 0.01);
+                        _this.variables[i] = g.minVar = new IndexedVariable(i++, typeof g.stiffness === "undefined" ? 0.01 : g.stiffness);
+                        _this.variables[i] = g.maxVar = new IndexedVariable(i++, typeof g.stiffness === "undefined" ? 0.01 : g.stiffness);
                     });
                 }
             }
@@ -2854,7 +2854,11 @@ var cola;
                 if (group.groups) {
                     for (var j = 0; j < group.groups.length; ++j) {
                         var child = group.groups[j];
-                        moduleSet.add(new Module(-1-j, new LinkSets(), new LinkSets(), this.initModulesFromGroup(child), true));
+                        var properties = {};
+                        for (var property in child)
+                            if (property !== "leaves" && property !== "groups")
+                                properties[property] = child[property];
+                        moduleSet.add(new Module(-1-j, new LinkSets(), new LinkSets(), this.initModulesFromGroup(child), true, properties));
                     }
                 }
                 return moduleSet;
@@ -2971,6 +2975,9 @@ var cola;
                     m.gid = groups.length;
                     if (!m.isIsland() || m.fixed) {
                         g = { id: m.gid };
+                        if (m.properties)
+                            for (var property in m.properties)
+                                g[property] = m.properties[property];
                         if (!group.groups)
                             group.groups = [];
                         group.groups.push(m.gid);
@@ -2982,7 +2989,7 @@ var cola;
         }
 
         var Module = (function () {
-            function Module(id, outgoing, incoming, children, fixed) {
+            function Module(id, outgoing, incoming, children, fixed, properties) {
                 if (typeof outgoing === "undefined") { outgoing = new LinkSets(); }
                 if (typeof incoming === "undefined") { incoming = new LinkSets(); }
                 if (typeof children === "undefined") { children = new ModuleSet(); }
@@ -2992,6 +2999,7 @@ var cola;
                 this.incoming = incoming;
                 this.children = children;
                 this.fixed = fixed;
+                this.properties = properties;
             }
             Module.prototype.getEdges = function (es) {
                 var _this = this;

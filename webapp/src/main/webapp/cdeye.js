@@ -51,7 +51,7 @@ function display(cdEye) {
         // Loop over the modules
         for (i = 0; i < modules.module.length; i++) {
             var module = modules.module[i];
-            groups.push({leaves: [], groups: []});
+            groups.push({leaves: [], groups: [], stiffness: 0.001, name: module.name});
             for (j = 0; j < module.beans.bean.length; j++)
                 beanToGroupId[module.beans.bean[j]] = groups.length - 1;
         }
@@ -96,7 +96,7 @@ function display(cdEye) {
                 offsets.push({node: producer, offset: 0});
             }
             constraints.push({type: "alignment", axis: "x", offsets: offsets});
-            groups.push({leaves: leaves});
+            groups.push({leaves: leaves, stiffness: 1.0});
             if (parent)
                 parent.groups.push(groups.length - 1);
         }
@@ -151,7 +151,9 @@ function display(cdEye) {
         .powerGraphGroups(function (d) {
             powerGraph = d;
             d.groups.forEach(function (v) {
-                return v.padding = 10;
+                v.padding = 10;
+                if (typeof v.stiffness === "undefined")
+                    v.stiffness = 1.0;
             });
         })
         .constraints(constraints)
