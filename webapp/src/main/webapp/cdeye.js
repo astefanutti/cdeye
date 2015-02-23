@@ -200,7 +200,7 @@ function display(cdEye) {
         .call(d3cola.drag().on("dragstart.d3adaptor", function(d) {
             updateViewBox = false;
             d3.event.sourceEvent.stopPropagation();
-            d3cola.dragstart(d);
+            cola.Layout.dragStart(d);
         }));
 
     var label = container.selectAll(".label")
@@ -213,7 +213,7 @@ function display(cdEye) {
         .call(d3cola.drag().on("dragstart.d3adaptor", function(d) {
             updateViewBox = false;
             d3.event.sourceEvent.stopPropagation();
-            d3cola.dragstart(d);
+            cola.Layout.dragStart(d);
         }))
         .each(function (d) {
             var b = this.getBBox();
