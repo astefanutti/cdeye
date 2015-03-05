@@ -1,9 +1,24 @@
-# Visualization Framework for CDI
+# Visualization Toolkit for CDI
 
 [![Build Status][Travis badge]][Travis build]
 
 [Travis badge]: https://travis-ci.org/astefanutti/cdeye.svg
 [Travis build]: https://travis-ci.org/astefanutti/cdeye
+
+## About
+
+_CDEye_ is a visualization toolkit for [CDI][]. It consists of:
++ A CDI [portable extension][] that provides access to the CDI deployment metadata,
++ A series of RESTful Web Services packaged as a WAR portable to any [JAX-RS][] compliant runtime that expose these metadata,
++ An HTML5 front-end that uses [cola.js][] and [D3.js][] to layout and display the dependency injection graph along with the [bean archives][] structure.
+
+[CDI]: http://www.cdi-spec.org/
+[JAX-RS]: https://jax-rs-spec.java.net/
+[cola.js]: http://marvl.infotech.monash.edu/webcola/
+[D3.js]: http://d3js.org/
+
+[portable extension]: http://docs.jboss.org/cdi/spec/1.2/cdi-spec.html#spi
+[bean archives]: http://docs.jboss.org/cdi/spec/1.2/cdi-spec.html#bean_archive
 
 ## Examples
 
