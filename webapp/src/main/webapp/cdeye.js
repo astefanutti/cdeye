@@ -62,7 +62,7 @@ function display(cdEye) {
         var bean = beans.bean[i];
         beanToNodeId[bean.id] = i;
         // TODO: the id should be the original id, not the index, though that is required for edge routing (test if that is still required for metro line edge router)
-        nodes[i] = {id: i, index: i, name: bean.classSimpleName, width: 200, height: 40};
+        nodes[i] = {id: i, index: i, name: bean.classSimpleName, width: 150, height: 50};
         if (modules && bean.id in beanToGroupId)
             groups[beanToGroupId[bean.id]].leaves.push(i);
     }
@@ -130,36 +130,80 @@ function display(cdEye) {
     var updateViewBox = true;
     svg.call(d3.behavior.zoom().on("zoom", function() {
         updateViewBox = false;
-        container.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
+        container.attr("transform", "translate(" + d3.event.translate + ") scale(" + d3.event.scale + ")");
     }));
     svg.call(d3.behavior.drag().on("dragstart", function() {
         updateViewBox = false;
     }));
 
     var color = d3.scale.category20();
+    var margin = 10, padding = 10;
+    var groupMargin = 10, groupPadding = 10;
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // compute power graph
     var powerGraph = null;
-    var d3cola = cola.d3adaptor()
-        //.linkDistance(100)
-        .avoidOverlaps(true)
-        .handleDisconnected(true)
-        .convergenceThreshold(0.0001)
-        .size([window.innerWidth, window.innerHeight])
+    cola.d3adaptor()
+        .avoidOverlaps(false)
         .nodes(nodes)
         .links(links)
         .groups(groups)
         .powerGraphGroups(function (d) {
             powerGraph = d;
-            d.groups.forEach(function (v) {
-                v.padding = 10;
+            powerGraph.groups.forEach(function (v) {
+                v.padding = groupPadding;
+            });
+        });
+    // construct a flat graph with dummy nodes for the groups and edges connecting group dummy nodes to their children
+    // power edges attached to groups are replaced with edges connected to the corresponding group dummy node
+    var n = nodes.length;
+    var edges = [];
+    var vs = nodes.slice(0);
+    powerGraph.groups.forEach(function (g) {
+        var sourceInd = g.index = g.id + n;
+        vs.push(g);
+        if (typeof g.leaves !== 'undefined')
+            g.leaves.forEach(function (v) { return edges.push({ source: sourceInd, target: v.index }); });
+        if (typeof g.groups !== 'undefined')
+            g.groups.forEach(function (gg) { return edges.push({ source: sourceInd, target: gg.id + n }); });
+    });
+    powerGraph.powerEdges.forEach(function (e) {
+        edges.push({ source: e.source.index, target: e.target.index });
+    });
+    // layout the flat graph with dummy nodes and edges
+    cola.d3adaptor()
+        .size([window.innerWidth, window.innerHeight])
+        .nodes(vs)
+        .links(edges)
+        .avoidOverlaps(false)
+        //.symmetricDiffLinkLengths(5)
+        .symmetricDiffLinkLengths(30, 4)
+        .constraints(constraints)
+        .start(50, 100);
+    // final layout taking node positions from above as starting positions
+    // subject to group containment constraints
+    // FIXME: find a proper way to deal with multiple power graph passes
+    nodes.forEach(function(n) { delete n.parent; delete n.bounds; });
+    var d3cola = cola.d3adaptor()
+        .size([window.innerWidth, window.innerHeight])
+        .avoidOverlaps(true)
+        .nodes(nodes)
+        .links(links)
+        .groups(groups)
+        //.groupCompactness(1e-4)
+        //.symmetricDiffLinkLengths(3)
+        .symmetricDiffLinkLengths(20, 4)
+        //.jaccardLinkLengths(400, 0.5)
+        .powerGraphGroups(function (d) {
+            powerGraph = d;
+            powerGraph.groups.forEach(function (v) {
+                v.padding = groupPadding;
                 if (typeof v.stiffness === "undefined")
                     v.stiffness = 1.0;
             });
         })
-        .constraints(constraints)
-        .symmetricDiffLinkLengths(20, 8)
-        //.jaccardLinkLengths(400, 0.5)
-        ;
+        .constraints(constraints);
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     var group = container.selectAll(".group")
         .data(powerGraph.groups)
@@ -167,33 +211,18 @@ function display(cdEye) {
         .enter().append("rect")
         .attr("rx", 8).attr("ry", 8)
         .attr("class", "group")
-        .style("fill", function (d, i) { return color(i); });
+        .style("fill", function (d, i) { return color(i); })
+        .style("stroke", function (d, i) { return color(i); });
 
     var link = container.selectAll(".link")
         .data(powerGraph.powerEdges)
         //.data(d3cola.links())
-        .enter().append("path")
-        .attr("class", "link");
-
-    //var dist = container.selectAll(".dist")
-    //    .data(d3cola.links())
-    //    .enter().append("path")
-    //    .attr("class", "dist");
-
-    //dist.each(function (d) { this.computedLength = 100 * d.length; });
-    //var length = container.selectAll(".length")
-    //    .data(dist[0])
-    //    .enter().append("text")
-    //    .attr("class", "length");
-
-    var margin = 15, pad = 10;
+        .enter().append("g");
 
     var node = container.selectAll(".node")
         .data(nodes)
         .enter().append("rect")
         .attr("class", "node")
-        .attr("width", function (d) { return d.width + 2 * margin; })
-        .attr("height", function (d) { return d.height + 2 * margin; })
         .attr("rx", 5).attr("ry", 5)
         .call(d3cola.drag)
         // override the dragstart listener to stop the viewBox update and the drag event propagation
@@ -205,51 +234,41 @@ function display(cdEye) {
 
     var label = container.selectAll(".label")
         .data(nodes)
-        .enter().append("text")
-        .attr("class", "label")
-        .text(function (d) { return d.name; })
+        .enter().append("g")
         .call(d3cola.drag)
         // override the dragstart listener to stop the viewBox update and the drag event propagation
         .call(d3cola.drag().on("dragstart.d3adaptor", function(d) {
             updateViewBox = false;
             d3.event.sourceEvent.stopPropagation();
             cola.Layout.dragStart(d);
-        }))
-        .each(function (d) {
-            var b = this.getBBox();
-            var extra = 2 * margin + 2 * pad;
-            d.width = b.width + extra;
-            d.height = b.height + extra;
+        }));
+
+    label.append("text")
+        .attr("class", "label")
+        .text(function (d) { return d.name; })
+        .attr("transform", function (d) {
+            var bb = this.getBBox();
+            var extra = 2 * (margin + padding);
+            var sw = (d.width - extra) / bb.width;
+            var sh = (d.height - extra) / bb.height;
+            return "scale(" + (sw < sh ? sw : sh) + ")";
         });
 
-    var iteration = 0,
-        collapse = 0;
+    var iteration = 0, collapse = 0;
 
     d3cola.on("tick", function (event) {
-        if (event.stress < 1)
-            return d3cola.stop();
         iteration++;
         update(event);
         if (updateViewBox)
             viewBox();
     }).on("end", function (event) {
-        if (event.stress > 0.01 && collapse < 10) {
-            collapse++;
-            var D = d3cola.descent().D;
-            for (var i = 0; i < D.length; i++)
-                for (var j = 0; j < D[i].length; j++)
-                    D[i][j] *= 0.9;
-            d3cola.convergenceThreshold(0.01);
-            d3cola.resume();
-        } else {
-            routeEdges();
-            d3cola.on("tick", function (event) {
-                if (event.stress < 1)
-                    return d3cola.stop();
-                update(event);
-            });
-            d3cola.on("end", routeEdges);
-        }
+        // FIXME: find a proper way to deal with multiple power graph passes
+        nodes.forEach(function(n) { delete n.parent; delete n.bounds; });
+        d3cola.start(0, 0, 1, 1);
+        d3cola.on("tick", function (event) {
+            update(event);
+        });
+        d3cola.on("end", routeEdges);
     });
 
     function getId(v, n) {
@@ -270,7 +289,6 @@ function display(cdEye) {
         //    .attr("x", function (d) { return d.p.x; })
         //    .attr("y", function (d) { return d.p.y; })
         //    .text(function (d) { return Math.floor(d.l) + "(" + Math.floor(d.computedLength) + ")"} );
-
         var n = nodes.length, _id = function (v) {
             return getId(v, n) - 1;
         }, g = {
@@ -300,108 +318,40 @@ function display(cdEye) {
                 };
             })
         };
-        var gridrouter = new cola.GridRouter(g.nodes, {
+        var gridRouter = new cola.GridRouter(g.nodes, {
             getChildren: function (v) {
                 return v.children;
             },
             getBounds: function (v) {
                 return v.bounds;
             }
-        }, 10);
+        }, groupPadding);
 
-        //var gs = gridrouter.backToFront.filter(function (v) {
-        //    return !v.leaf;
-        //});
+        var routes = gridRouter.routeEdges(g.edges, 6, function (e) { return e.source; }, function (e) { return e.target; });
 
-        var routes = gridrouter.routeEdges(g.edges, 10, function (e) {
-            return e.source;
-        }, function (e) {
-            return e.target;
-        });
-
-        link.attr("d", function (e, j) {
-            var route = routes[j];
-            var id = 'e' + _id(e.source) + '-' + _id(e.target);
-            var cornerradius = 10;
-            var arrowwidth = 6;
-            var arrowheight = 12;
-            //var c = color(e.type);
-            var linewidth = 5;
-            var path = 'M ' + route[0][0].x + ' ' + route[0][0].y + ' ';
-            if (route.length > 1) {
-                for (var i = 0; i < route.length; i++) {
-                    var li = route[i];
-                    var x = li[1].x, y = li[1].y;
-                    var dx = x - li[0].x;
-                    var dy = y - li[0].y;
-                    if (i < route.length - 1) {
-                        if (Math.abs(dx) > 0) {
-                            x -= dx / Math.abs(dx) * cornerradius;
-                        } else {
-                            y -= dy / Math.abs(dy) * cornerradius;
-                        }
-                        path += 'L ' + x + ' ' + y + ' ';
-                        var l = route[i + 1];
-                        var x0 = l[0].x, y0 = l[0].y;
-                        var x1 = l[1].x;
-                        var y1 = l[1].y;
-                        dx = x1 - x0;
-                        dy = y1 - y0;
-                        var angle = cola.GridRouter.angleBetween2Lines(li, l) < 0 ? 1 : 0;
-                        //console.log(cola.GridRouter.angleBetween2Lines(li, l));
-                        var x2, y2;
-                        if (Math.abs(dx) > 0) {
-                            x2 = x0 + dx / Math.abs(dx) * cornerradius;
-                            y2 = y0;
-                        } else {
-                            x2 = x0;
-                            y2 = y0 + dy / Math.abs(dy) * cornerradius;
-                        }
-                        var cx = Math.abs(x2 - x);
-                        var cy = Math.abs(y2 - y);
-                        path += 'A ' + cx + ' ' + cy + ' 0 0 ' + angle + ' ' + x2 + ' ' + y2 + ' ';
-                    } else {
-                        var arrowtip = [x, y];
-                        var arrowcorner1, arrowcorner2;
-                        if (Math.abs(dx) > 0) {
-                            x -= dx / Math.abs(dx) * arrowheight;
-                            arrowcorner1 = [x, y + arrowwidth];
-                            arrowcorner2 = [x, y - arrowwidth];
-                        } else {
-                            y -= dy / Math.abs(dy) * arrowheight;
-                            arrowcorner1 = [x + arrowwidth, y];
-                            arrowcorner2 = [x - arrowwidth, y];
-                        }
-                        path += 'L ' + x + ' ' + y + ' ';
-                        //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + ' Z').attr('stroke', '#550000').attr('stroke-width', 2);
-                        //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1]).attr('stroke', 'none').attr('fill', c);
-                        path += 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + 'Z ';
-                    }
-                }
-            } else {
-                var li = route[0];
-                var x = li[1].x, y = li[1].y;
-                var dx = x - li[0].x;
-                var dy = y - li[0].y;
-                var arrowtip = [x, y];
-                var arrowcorner1, arrowcorner2;
-                if (Math.abs(dx) > 0) {
-                    x -= dx / Math.abs(dx) * arrowheight;
-                    arrowcorner1 = [x, y + arrowwidth];
-                    arrowcorner2 = [x, y - arrowwidth];
-                } else {
-                    y -= dy / Math.abs(dy) * arrowheight;
-                    arrowcorner1 = [x + arrowwidth, y];
-                    arrowcorner2 = [x - arrowwidth, y];
-                }
-                path += 'L ' + x + ' ' + y + ' ';
-                //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + ' Z').attr('stroke', '#550000').attr('stroke-width', 2);
-                //svg.append('path').attr('d', 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1]).attr('stroke', 'none').attr('fill', c);
-                path += 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1] + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1] + 'Z ';
-            }
-            //svg.append('path').attr('d', path).attr('fill', 'none').attr('stroke', '#550000').attr('stroke-width', linewidth + 2);
-            //svg.append('path').attr('id', id).attr('d', path).attr('fill', 'none').attr('stroke', c).attr('stroke-width', linewidth);
-            return path;
+        link.selectAll("path").remove();
+        link.each( function (d, i) {
+            var cornerRadius = 8, arrowWidth = 4, lineWidth = 2, arrowHeight = 7;
+            var p = cola.GridRouter.getRoutePath(routes[i], cornerRadius, arrowWidth, arrowHeight);
+            var l = d3.select(this);
+            l.append('path')
+                .attr('d', p.arrowpath + ' Z')
+                .attr('stroke', '#888888')
+                .attr('stroke-width', 1);
+            l.append('path')
+                .attr('d', p.arrowpath)
+                .attr('stroke', 'none')
+                .attr('fill', '#aaaaaa');
+            l.append('path')
+                .attr('d', p.routepath)
+                .attr('fill', 'none')
+                .attr('stroke', '#888888')
+                .attr('stroke-width', lineWidth + 1);
+            l.append('path')
+                .attr('d', p.routepath)
+                .attr('fill', 'none')
+                .attr('stroke', '#aaaaaa')
+                .attr('stroke-width', lineWidth);
         });
     }
 
@@ -415,8 +365,7 @@ function display(cdEye) {
     function update(event) {
         debug.html("iteration:" + iteration + "<br/>" +
             "collapse:" + collapse + "<br/>" +
-            "alpha:" + d3.format(".2r")(event.alpha) + "<br/>" +
-            "stress:" + d3.format(".2r")(event.stress)
+            "alpha:" + d3.format(".2r")(event.alpha) + "<br/>"
         );
 
         node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
@@ -425,24 +374,24 @@ function display(cdEye) {
             .attr("width", function (d) { return d.innerBounds.width(); })
             .attr("height", function (d) { return d.innerBounds.height(); });
 
-        group.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
+        group.each(function (d) { d.innerBounds = d.bounds.inflate(-groupMargin); })
             .attr("x", function (d) { return d.innerBounds.x; })
             .attr("y", function (d) { return d.innerBounds.y; })
             .attr("width", function (d) { return d.innerBounds.width(); })
             .attr("height", function (d) { return d.innerBounds.height(); });
 
-        link.attr("d", function (d) {
-            cola.vpsc.makeEdgeBetween(d, d.source.innerBounds, d.target.innerBounds, 5);
-            return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
-        });
+        link.selectAll("path").remove();
+        link.append("path")
+            .attr("class", "link")
+            .attr("d", function (d) {
+                cola.vpsc.makeEdgeBetween(d, d.source.innerBounds, d.target.innerBounds, 5);
+                return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
+            }
+        );
 
-        label.attr("x", function (d) { return d.x; })
-            .attr("y", function (d) { return d.y + this.getBBox().height / 3.5; });
-
-        //dist.attr("d", function (d) {
-        //    cola.vpsc.makeEdgeBetween(d, d.source.innerBounds, d.target.innerBounds, 5);
-        //    return lineFunction([{ x: d.sourceIntersection.x, y: d.sourceIntersection.y }, { x: d.arrowStart.x, y: d.arrowStart.y }]);
-        //});
+        label.attr("transform", function(d) { return "translate(" + d.x + "," + (d.y + this.getBBox().height / 3.5) + ")"; })
+            .attr("width", function (d) { return d.innerBounds.width(); })
+            .attr("height", function (d) { return d.innerBounds.height(); });
 
         //length.each(function (d) { d.l = d.getTotalLength(); d.p = d.getPointAtLength(d.l / 2); })
         //    .attr("x", function (d) { return d.p.x; })

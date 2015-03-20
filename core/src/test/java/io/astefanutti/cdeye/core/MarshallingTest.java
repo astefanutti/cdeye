@@ -61,7 +61,7 @@ public class MarshallingTest {
         unmarshaller.setProperty("eclipselink.media-type", "application/json");
         CdEyeBeans beans2 = (CdEyeBeans) unmarshaller.unmarshal(new StringReader(writer.toString()));
 
-        CdEyeBean bean = (CdEyeBean) beans2.getBean().get(1).getInjectionPoints().getInjectionPoint().get(0).getBean();
+        CdEyeBean bean = beans2.getBean().get(1).getInjectionPoints().getInjectionPoint().get(0).getBean();
         System.out.println(bean.getClassName());
      }
 }
