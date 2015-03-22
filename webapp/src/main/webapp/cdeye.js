@@ -137,7 +137,7 @@ function display(cdEye) {
     }));
 
     var color = d3.scale.category20();
-    var margin = 10, padding = 10;
+    var nodeMargin = 10, nodePadding = 10;
     var groupMargin = 10, groupPadding = 10;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -234,7 +234,16 @@ function display(cdEye) {
 
     var label = container.selectAll(".label")
         .data(nodes)
-        .enter().append("g")
+        .enter().append("text")
+        .attr("class", "label")
+        .text(function (d) { return d.name; })
+        .each(function (d) {
+            var bb = this.getBBox();
+            var extra = 2 * (nodeMargin + nodePadding);
+            var sw = (d.width - extra) / bb.width;
+            var sh = (d.height - extra) / bb.height;
+            d.scale = (sw < sh ? sw : sh);
+        })
         .call(d3cola.drag)
         // override the dragstart listener to stop the viewBox update and the drag event propagation
         .call(d3cola.drag().on("dragstart.d3adaptor", function(d) {
@@ -242,17 +251,6 @@ function display(cdEye) {
             d3.event.sourceEvent.stopPropagation();
             cola.Layout.dragStart(d);
         }));
-
-    label.append("text")
-        .attr("class", "label")
-        .text(function (d) { return d.name; })
-        .attr("transform", function (d) {
-            var bb = this.getBBox();
-            var extra = 2 * (margin + padding);
-            var sw = (d.width - extra) / bb.width;
-            var sh = (d.height - extra) / bb.height;
-            return "scale(" + (sw < sh ? sw : sh) + ")";
-        });
 
     var iteration = 0, collapse = 0;
 
@@ -264,6 +262,7 @@ function display(cdEye) {
     }).on("end", function (event) {
         // FIXME: find a proper way to deal with multiple power graph passes
         nodes.forEach(function(n) { delete n.parent; delete n.bounds; });
+        // TODO: proper transition to gridification
         d3cola.start(0, 0, 1, 1);
         d3cola.on("tick", function (event) {
             update(event);
@@ -368,7 +367,7 @@ function display(cdEye) {
             "alpha:" + d3.format(".2r")(event.alpha) + "<br/>"
         );
 
-        node.each(function (d) { d.innerBounds = d.bounds.inflate(-margin); })
+        node.each(function (d) { d.innerBounds = d.bounds.inflate(-nodeMargin); })
             .attr("x", function (d) { return d.innerBounds.x; })
             .attr("y", function (d) { return d.innerBounds.y; })
             .attr("width", function (d) { return d.innerBounds.width(); })
@@ -389,9 +388,9 @@ function display(cdEye) {
             }
         );
 
-        label.attr("transform", function(d) { return "translate(" + d.x + "," + (d.y + this.getBBox().height / 3.5) + ")"; })
-            .attr("width", function (d) { return d.innerBounds.width(); })
-            .attr("height", function (d) { return d.innerBounds.height(); });
+        label.attr("transform", function(d) {
+            return "translate(" + d.x + "," + (d.y + (this.getBBox().height * d.scale) / 3) + ") scale(" + d.scale + ")";
+        });
 
         //length.each(function (d) { d.l = d.getTotalLength(); d.p = d.getPointAtLength(d.l / 2); })
         //    .attr("x", function (d) { return d.p.x; })
