@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
 @Path("modules")
 public class ModulesResource {
 
-    private static final Pattern JAR_PATTERN = Pattern.compile("jar:file:(.*\\.jar)!(.*\\.class)");
+    private static final Pattern JAR_PATTERN = Pattern.compile("jar:file:(?<jar>.*\\.jar)!(?<class>.*\\.class)");
 
     @Inject
     private CdEye cdEye;
@@ -55,9 +55,9 @@ public class ModulesResource {
 
             Matcher matcher = JAR_PATTERN.matcher(String.valueOf(url));
             if (matcher.matches()) {
-                if (!jars.containsKey(matcher.group(1)))
-                    jars.put(matcher.group(1), new ArrayList<String>());
-                jars.get(matcher.group(1)).add(cdEye.getBeanId(bean));
+                if (!jars.containsKey(matcher.group("jar")))
+                    jars.put(matcher.group("jar"), new ArrayList<String>());
+                jars.get(matcher.group("jar")).add(cdEye.getBeanId(bean));
             }
         }
 

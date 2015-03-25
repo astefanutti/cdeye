@@ -54,7 +54,7 @@ public class BeansResource {
             CdEyeBean cdEyeBean = cdEyeBean(bean);
             for (InjectionPoint ip : bean.getInjectionPoints()) {
                 // Skip InjectionPoint and BeanManager injection points
-                if (InjectionPoint.class.equals(ip.getType()) || BeanManager.class.equals(ip.getType()))
+                if (InjectionPoint.class.equals(getRawType(ip.getType())) || BeanManager.class.equals(getRawType(ip.getType())))
                     continue;
                 if (Instance.class.equals(getRawType(ip.getType())) || Event.class.equals(getRawType(ip.getType())))
                     // TODO: support programmatic lookup and events

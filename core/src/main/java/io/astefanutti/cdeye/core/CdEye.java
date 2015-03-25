@@ -29,11 +29,11 @@ public interface CdEye {
 
     boolean isExcluded(Bean<?> bean);
 
+    Bean<?> resolveBean(InjectionPoint ip);
+
+    List<Bean<?>> getProducers(Class<?> clazz);
+
     String getProducerName(Bean<?> bean);
 
-    public List<Bean<?>> getProducers(Class<?> clazz);
-
-    public Bean<?> resolveBean(InjectionPoint ip);
-
-    public String getBeanId(Bean<?> bean);
+    String getBeanId(Bean<?> bean);
 }
